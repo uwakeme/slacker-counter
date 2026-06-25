@@ -23,6 +23,7 @@ interface FishTimerState {
   getFishingEarnings: () => number;
   getOvertimeEarnings: () => number;
   getNetEarnings: () => number;
+  isDuringWorkTime: () => boolean;
   // 操作
   setSalary: (type: 'monthly' | 'yearly', salary: number) => void;
   setWorkTime: (amStart: string, amEnd: string, pmStart: string, pmEnd: string) => void;
@@ -84,6 +85,25 @@ export const useFishTimerStore = create<FishTimerState>()(
 
       getNetEarnings: () => {
         return get().getFishingEarnings() + get().getOvertimeEarnings();
+      },
+
+      isDuringWorkTime: () => {
+        const { amStartTime, amEndTime, pmStartTime, pmEndTime } = get();
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        
+        const toMinutes = (t: string) => {
+          const [h, m] = t.split(':').map(Number);
+          return h * 60 + m;
+        };
+        
+        const amStart = toMinutes(amStartTime);
+        const amEnd = toMinutes(amEndTime);
+        const pmStart = toMinutes(pmStartTime);
+        const pmEnd = toMinutes(pmEndTime);
+        
+        return (currentMinutes >= amStart && currentMinutes < amEnd) || 
+               (currentMinutes >= pmStart && currentMinutes < pmEnd);
       },
 
       setSalary: (type, salary) => set({ salaryType: type, salary }),

@@ -1,5 +1,5 @@
 import { useFishTimerStore } from '@/store/useFishTimerStore';
-import { Fish, Coffee, Moon, RotateCcw, Clock } from 'lucide-react';
+import { Fish, Coffee, Moon, RotateCcw, Clock, Briefcase } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 function formatTime(ms: number): string {
@@ -27,6 +27,7 @@ export default function App() {
     getFishingEarnings,
     getOvertimeEarnings,
     getNetEarnings,
+    isDuringWorkTime,
     setSalary,
     setWorkTime,
     startFishing,
@@ -49,6 +50,11 @@ export default function App() {
       setCurrentTime(totalFishingTime);
     }
   }, [isFishing, fishingStartTime, totalFishingTime]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {}, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSalarySubmit = () => {
     const val = parseFloat(tempSalary);
@@ -104,11 +110,15 @@ export default function App() {
                 <div className="flex items-center justify-center gap-2 mb-2">
                   {isFishing ? (
                     <Coffee className="w-5 h-5 text-amber-400 animate-bounce" />
+                  ) : isDuringWorkTime() ? (
+                    <Briefcase className="w-5 h-5 text-blue-400" />
                   ) : (
-                    <Fish className="w-5 h-5 text-amber-400" />
+                    <Fish className="w-5 h-5 text-white/40" />
                   )}
-                  <span className={`text-xs font-medium ${isFishing ? 'text-amber-300' : 'text-white/50'}`}>
-                    {isFishing ? '摸鱼中' : '待机中'}
+                  <span className={`text-xs font-medium ${
+                    isFishing ? 'text-amber-300' : isDuringWorkTime() ? 'text-blue-300' : 'text-white/50'
+                  }`}>
+                    {isFishing ? '摸鱼中' : isDuringWorkTime() ? '工作中' : '待机中'}
                   </span>
                 </div>
 
