@@ -1,5 +1,5 @@
 import { useFishTimerStore } from '@/store/useFishTimerStore';
-import { Fish, Coffee, Moon, RotateCcw } from 'lucide-react';
+import { Fish, Coffee, Moon, RotateCcw, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 function formatTime(ms: number): string {
@@ -14,15 +14,21 @@ export default function App() {
   const {
     salaryType,
     salary,
+    amStartTime,
+    amEndTime,
+    pmStartTime,
+    pmEndTime,
     isFishing,
     fishingStartTime,
     totalFishingTime,
     overtimeHours,
     getHourlyRate,
+    getWorkHoursPerDay,
     getFishingEarnings,
     getOvertimeEarnings,
     getNetEarnings,
     setSalary,
+    setWorkTime,
     startFishing,
     stopFishing,
     setOvertimeHours,
@@ -60,6 +66,7 @@ export default function App() {
 
   const netEarnings = getNetEarnings();
   const currentEarnings = (currentTime / (1000 * 60 * 60)) * getHourlyRate();
+  const workHours = getWorkHoursPerDay();
 
   return (
     <div className="min-h-screen bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuNjUiIG51bU9jdGF2ZXM9IjMiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbm9pc2UpIiBvcGFjaXR5PSIwLjEiLz48L3N2Zz4=')] bg-slate-900 flex items-center justify-center p-4">
@@ -194,6 +201,51 @@ export default function App() {
                     placeholder="10000"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* 上班时间设置 */}
+            <div className="bg-white/5 rounded-lg p-3 border border-white/10 mb-4">
+              <div className="flex items-center gap-1.5 mb-3">
+                <Clock className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-xs text-white/50">上班时间</span>
+                <span className="text-[10px] text-white/30 ml-auto">每日{workHours.toFixed(1)}小时</span>
+              </div>
+
+              {/* 上午 */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] text-amber-400/70 w-6">上午</span>
+                <input
+                  type="time"
+                  value={amStartTime}
+                  onChange={(e) => setWorkTime(e.target.value, amEndTime, pmStartTime, pmEndTime)}
+                  className="flex-1 bg-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+                <span className="text-white/30 text-xs">~</span>
+                <input
+                  type="time"
+                  value={amEndTime}
+                  onChange={(e) => setWorkTime(amStartTime, e.target.value, pmStartTime, pmEndTime)}
+                  className="flex-1 bg-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* 下午 */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-purple-400/70 w-6">下午</span>
+                <input
+                  type="time"
+                  value={pmStartTime}
+                  onChange={(e) => setWorkTime(amStartTime, amEndTime, e.target.value, pmEndTime)}
+                  className="flex-1 bg-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+                <span className="text-white/30 text-xs">~</span>
+                <input
+                  type="time"
+                  value={pmEndTime}
+                  onChange={(e) => setWorkTime(amStartTime, amEndTime, pmStartTime, e.target.value)}
+                  className="flex-1 bg-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
               </div>
             </div>
 

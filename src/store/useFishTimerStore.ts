@@ -5,9 +5,12 @@ interface FishTimerState {
   // 薪资信息
   salaryType: 'monthly' | 'yearly';
   salary: number;
-  // 上下班时间
-  workStartTime: string;
-  workEndTime: string;
+  // 上班时间（上午）
+  amStartTime: string;
+  amEndTime: string;
+  // 上班时间（下午）
+  pmStartTime: string;
+  pmEndTime: string;
   // 摸鱼状态
   isFishing: boolean;
   fishingStartTime: number | null;
@@ -16,12 +19,13 @@ interface FishTimerState {
   overtimeHours: number;
   // 计算属性
   getHourlyRate: () => number;
+  getWorkHoursPerDay: () => number;
   getFishingEarnings: () => number;
   getOvertimeEarnings: () => number;
   getNetEarnings: () => number;
   // 操作
   setSalary: (type: 'monthly' | 'yearly', salary: number) => void;
-  setWorkTime: (start: string, end: string) => void;
+  setWorkTime: (amStart: string, amEnd: string, pmStart: string, pmEnd: string) => void;
   startFishing: () => void;
   stopFishing: () => void;
   setOvertimeHours: (hours: number) => void;
@@ -36,8 +40,10 @@ export const useFishTimerStore = create<FishTimerState>()(
     (set, get) => ({
       salaryType: 'monthly',
       salary: 10000,
-      workStartTime: '09:00',
-      workEndTime: '18:00',
+      amStartTime: '09:00',
+      amEndTime: '12:00',
+      pmStartTime: '13:00',
+      pmEndTime: '18:00',
       isFishing: false,
       fishingStartTime: null,
       totalFishingTime: 0,
@@ -45,10 +51,22 @@ export const useFishTimerStore = create<FishTimerState>()(
 
       getHourlyRate: () => {
         const { salaryType, salary } = get();
+        const workHoursPerDay = get().getWorkHoursPerDay();
         if (salaryType === 'monthly') {
-          return salary / WORK_DAYS_PER_MONTH / WORK_HOURS_PER_DAY;
+          return salary / WORK_DAYS_PER_MONTH / workHoursPerDay;
         }
-        return salary / 12 / WORK_DAYS_PER_MONTH / WORK_HOURS_PER_DAY;
+        return salary / 12 / WORK_DAYS_PER_MONTH / workHoursPerDay;
+      },
+
+      getWorkHoursPerDay: () => {
+        const { amStartTime, amEndTime, pmStartTime, pmEndTime } = get();
+        const toMinutes = (t: string) => {
+          const [h, m] = t.split(':').map(Number);
+          return h * 60 + m;
+        };
+        const amMinutes = toMinutes(amEndTime) - toMinutes(amStartTime);
+        const pmMinutes = toMinutes(pmEndTime) - toMinutes(pmStartTime);
+        return (amMinutes + pmMinutes) / 60;
       },
 
       getFishingEarnings: () => {
@@ -70,7 +88,8 @@ export const useFishTimerStore = create<FishTimerState>()(
 
       setSalary: (type, salary) => set({ salaryType: type, salary }),
 
-      setWorkTime: (start, end) => set({ workStartTime: start, workEndTime: end }),
+      setWorkTime: (amStart, amEnd, pmStart, pmEnd) =>
+        set({ amStartTime: amStart, amEndTime: amEnd, pmStartTime: pmStart, pmEndTime: pmEnd }),
 
       startFishing: () =>
         set({
