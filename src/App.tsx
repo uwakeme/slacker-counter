@@ -1,5 +1,4 @@
 import { useFishTimerStore } from '@/store/useFishTimerStore';
-import { Fish, Coffee, Moon, RotateCcw, Clock, Briefcase } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 function formatTime(ms: number): string {
@@ -39,6 +38,7 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(totalFishingTime);
   const [tempSalary, setTempSalary] = useState(salary.toString());
   const [tempOvertime, setTempOvertime] = useState(overtimeHours.toString());
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     if (isFishing && fishingStartTime) {
@@ -50,11 +50,6 @@ export default function App() {
       setCurrentTime(totalFishingTime);
     }
   }, [isFishing, fishingStartTime, totalFishingTime]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {}, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleSalarySubmit = () => {
     const val = parseFloat(tempSalary);
@@ -74,226 +69,368 @@ export default function App() {
   const currentEarnings = (currentTime / (1000 * 60 * 60)) * getHourlyRate();
   const workHours = getWorkHoursPerDay();
 
+  const statusText = isFishing ? '摸鱼中' : isDuringWorkTime() ? '工作中' : '待机';
+  const statusColor = isFishing ? 'text-orange-400' : isDuringWorkTime() ? 'text-green-400' : 'text-gray-500';
+
   return (
-    <div className="min-h-screen bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuNjUiIG51bU9jdGF2ZXM9IjMiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbm9pc2UpIiBvcGFjaXR5PSIwLjEiLz48L3N2Zz4=')] bg-slate-900 flex items-center justify-center p-4">
-      <div className="w-[380px] relative">
-        {/* 毛玻璃主体 */}
-        <div className="relative bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl shadow-black/50 overflow-hidden">
-          {/* 顶部装饰条 */}
-          <div className="h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500" />
+    <div
+      className="min-h-screen flex items-center justify-center p-8"
+      style={{
+        background: 'radial-gradient(ellipse at 50% 40%, #2a2520 0%, #1a1510 50%, #0f0d0a 100%)',
+      }}
+    >
+      <div className="w-[360px]">
+        {/* 设备主体 */}
+        <div
+          className="relative rounded-[20px] p-5 shadow-2xl"
+          style={{
+            background: 'linear-gradient(180deg, #d4cfc5 0%, #c9c3b8 10%, #bdb6a9 50%, #b0a89c 90%, #a59e92 100%)',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.15)',
+          }}
+        >
+          {/* 品牌标签 */}
+          <div className="text-center mb-3">
+            <span
+              className="text-[10px] tracking-[0.3em] font-bold uppercase"
+              style={{ color: '#6b6558', fontFamily: 'monospace' }}
+            >
+              ◈ FISHER-PRO 9000 ◈
+            </span>
+          </div>
 
-          <div className="p-5">
-            {/* 标题栏 */}
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                  <Fish className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-semibold text-white/90 text-sm">摸鱼计时器</span>
+          {/* LCD 屏幕 */}
+          <div
+            className="relative rounded-lg p-4 mb-4 overflow-hidden"
+            style={{
+              background: 'linear-gradient(180deg, #8fa37d 0%, #7a8e68 30%, #6d805c 100%)',
+              boxShadow: 'inset 0 3px 8px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.1)',
+            }}
+          >
+            {/* CRT 扫描线 */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px, transparent 1px, transparent 3px)',
+              }}
+            />
+            {/* 屏幕内容 */}
+            <div className="relative">
+              {/* 顶部状态栏 */}
+              <div className="flex justify-between items-center mb-3" style={{ fontFamily: '"Courier New", monospace' }}>
+                <span className="text-[10px]" style={{ color: '#1a2e0a' }}>● {statusText}</span>
+                <span className="text-[10px]" style={{ color: '#1a2e0a' }}>
+                  {amStartTime}-{amEndTime} / {pmStartTime}-{pmEndTime}
+                </span>
               </div>
-              <span className="text-xs text-white/40">
-                {salaryType === 'monthly' ? '月薪' : '年薪'} ¥{salary.toLocaleString()}
-              </span>
-            </div>
 
-            {/* 计时核心区 */}
-            <div className={`relative rounded-xl p-4 mb-4 transition-all duration-300 ${
-              isFishing
-                ? 'bg-gradient-to-br from-amber-500/30 to-orange-500/30 border border-amber-500/40'
-                : 'bg-white/5 border border-white/10'
-            }`}>
-              {isFishing && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse pointer-events-none" />
-              )}
-
-              <div className="relative text-center">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  {isFishing ? (
-                    <Coffee className="w-5 h-5 text-amber-400 animate-bounce" />
-                  ) : isDuringWorkTime() ? (
-                    <Briefcase className="w-5 h-5 text-blue-400" />
-                  ) : (
-                    <Fish className="w-5 h-5 text-white/40" />
-                  )}
-                  <span className={`text-xs font-medium ${
-                    isFishing ? 'text-amber-300' : isDuringWorkTime() ? 'text-blue-300' : 'text-white/50'
-                  }`}>
-                    {isFishing ? '摸鱼中' : isDuringWorkTime() ? '工作中' : '待机中'}
-                  </span>
-                </div>
-
-                <div className="text-4xl font-mono font-bold text-white mb-2 tracking-wider">
+              {/* 时间显示 */}
+              <div className="text-center mb-3">
+                <div
+                  className="text-5xl font-bold tracking-[0.15em]"
+                  style={{
+                    fontFamily: '"Courier New", monospace',
+                    color: '#0d1f04',
+                    textShadow: '0 0 8px rgba(13,31,4,0.3)',
+                  }}
+                >
                   {formatTime(currentTime)}
                 </div>
-
-                <div className="text-sm text-white/60">
-                  时薪 <span className="text-amber-400 font-medium">¥{getHourlyRate().toFixed(1)}</span>
-                </div>
-
-                <div className={`text-lg font-bold mt-2 ${isFishing ? 'text-amber-300' : 'text-white/40'}`}>
-                  ¥{currentEarnings.toFixed(2)}
-                </div>
               </div>
 
+              {/* 金额显示 */}
+              <div className="flex justify-between items-end">
+                <div>
+                  <div className="text-[9px] mb-0.5" style={{ color: '#2a3f1a', fontFamily: 'monospace' }}>EARNED</div>
+                  <div
+                    className="text-2xl font-bold"
+                    style={{ fontFamily: '"Courier New", monospace', color: '#0d1f04' }}
+                  >
+                    ¥{currentEarnings.toFixed(2)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[9px] mb-0.5" style={{ color: '#2a3f1a', fontFamily: 'monospace' }}>RATE/H</div>
+                  <div
+                    className="text-lg font-bold"
+                    style={{ fontFamily: '"Courier New", monospace', color: '#0d1f04' }}
+                  >
+                    ¥{getHourlyRate().toFixed(1)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 统计行 */}
+          <div className="flex gap-2 mb-4">
+            <div
+              className="flex-1 rounded-md p-2 text-center"
+              style={{
+                background: 'linear-gradient(180deg, #a8c490 0%, #8fb374 100%)',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.15)',
+              }}
+            >
+              <div className="text-[9px] mb-0.5" style={{ color: '#2a3f1a', fontFamily: 'monospace' }}>FISH +</div>
+              <div className="text-sm font-bold" style={{ fontFamily: '"Courier New", monospace', color: '#0d1f04' }}>
+                +¥{getFishingEarnings().toFixed(1)}
+              </div>
+            </div>
+            <div
+              className="flex-1 rounded-md p-2 text-center"
+              style={{
+                background: 'linear-gradient(180deg, #c49090 0%, #b37474 100%)',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.15)',
+              }}
+            >
+              <div className="text-[9px] mb-0.5" style={{ color: '#3f1a1a', fontFamily: 'monospace' }}>WORK -</div>
+              <div className="text-sm font-bold" style={{ fontFamily: '"Courier New", monospace', color: '#1f0404' }}>
+                -¥{Math.abs(getOvertimeEarnings()).toFixed(1)}
+              </div>
+            </div>
+            <div
+              className="flex-1 rounded-md p-2 text-center"
+              style={{
+                background: netEarnings >= 0
+                  ? 'linear-gradient(180deg, #c4b090 0%, #b39f74 100%)'
+                  : 'linear-gradient(180deg, #c49090 0%, #b37474 100%)',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.15)',
+              }}
+            >
+              <div className="text-[9px] mb-0.5" style={{ color: '#3f341a', fontFamily: 'monospace' }}>NET</div>
+              <div className={`text-sm font-bold ${statusColor}`} style={{ fontFamily: '"Courier New", monospace' }}>
+                {netEarnings >= 0 ? '+' : ''}¥{netEarnings.toFixed(1)}
+              </div>
+            </div>
+          </div>
+
+          {/* 按钮区 */}
+          <div className="space-y-2">
+            {/* 主按钮行 */}
+            <div className="flex gap-2">
               <button
                 onClick={isFishing ? stopFishing : startFishing}
-                className={`w-full mt-4 py-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-                  isFishing
-                    ? 'bg-red-500/80 hover:bg-red-400/80 text-white'
-                    : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-lg shadow-amber-500/25'
-                }`}
+                className="flex-1 py-3 rounded-lg font-bold text-sm tracking-wider transition-all active:translate-y-0.5 active:shadow-inner"
+                style={{
+                  fontFamily: '"Courier New", monospace',
+                  background: isFishing
+                    ? 'linear-gradient(180deg, #c95050 0%, #a83838 100%)'
+                    : 'linear-gradient(180deg, #e89040 0%, #d07830 100%)',
+                  color: '#fff8e8',
+                  boxShadow: isFishing
+                    ? '0 3px 0 #7a2424, 0 5px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
+                    : '0 3px 0 #945418, 0 5px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
               >
-                {isFishing ? (
-                  <>
-                    <span>结束摸鱼</span>
-                  </>
-                ) : (
-                  <>
-                    <Fish className="w-4 h-4" />
-                    <span>开始摸鱼</span>
-                  </>
-                )}
+                {isFishing ? '■ 停止摸鱼' : '▶ 开始摸鱼'}
               </button>
             </div>
 
-            {/* 次要信息区 */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {/* 加班录入 */}
-              <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Moon className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="text-xs text-white/50">加班</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    value={tempOvertime}
-                    onChange={(e) => setTempOvertime(e.target.value)}
-                    onBlur={handleOvertimeSubmit}
-                    className="w-16 bg-white/10 rounded px-2 py-1 text-sm text-white text-center focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="0"
-                    step="0.5"
-                    min="0"
-                  />
-                  <span className="text-xs text-white/40">小时</span>
-                </div>
-                <div className="text-xs text-red-400 mt-1">-¥{Math.abs(getOvertimeEarnings()).toFixed(1)}</div>
-              </div>
+            {/* 次级按钮行 */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="flex-1 py-2 rounded-md text-xs font-bold tracking-wider transition-all active:translate-y-0.5"
+                style={{
+                  fontFamily: '"Courier New", monospace',
+                  background: 'linear-gradient(180deg, #787060 0%, #5e584c 100%)',
+                  color: '#d4cfc5',
+                  boxShadow: '0 2px 0 #3e3a32, 0 3px 5px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                {showSettings ? '▲ 收起设置' : '▼ 设置'}
+              </button>
+              <button
+                onClick={reset}
+                className="px-4 py-2 rounded-md text-xs font-bold transition-all active:translate-y-0.5"
+                style={{
+                  fontFamily: '"Courier New", monospace',
+                  background: 'linear-gradient(180deg, #687888 0%, #4c5c6c 100%)',
+                  color: '#d4e0eb',
+                  boxShadow: '0 2px 0 #303c48, 0 3px 5px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                ⟳
+              </button>
+            </div>
+          </div>
 
-              {/* 快速设置 */}
-              <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-xs text-white/50">薪酬设置</span>
+          {/* 设置面板 */}
+          {showSettings && (
+            <div
+              className="mt-4 rounded-lg p-3"
+              style={{
+                background: 'linear-gradient(180deg, #b8b2a6 0%, #aca698 100%)',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.15)',
+              }}
+            >
+              {/* 薪酬设置 */}
+              <div className="mb-3">
+                <div className="text-[10px] font-bold mb-2" style={{ color: '#5a5448', fontFamily: 'monospace' }}>
+                  ▸ 薪酬
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex gap-2 mb-2">
                   <button
                     onClick={() => setSalary('monthly', salary)}
-                    className={`text-xs px-2 py-1 rounded transition-colors ${
-                      salaryType === 'monthly' ? 'bg-amber-500/50 text-white' : 'bg-white/10 text-white/50 hover:bg-white/20'
-                    }`}
+                    className="flex-1 py-1.5 rounded text-xs font-bold transition-all"
+                    style={{
+                      fontFamily: 'monospace',
+                      background: salaryType === 'monthly'
+                        ? 'linear-gradient(180deg, #d89040, #c07830)'
+                        : 'linear-gradient(180deg, #908878, #787060)',
+                      color: salaryType === 'monthly' ? '#fff' : '#c9c3b8',
+                      boxShadow: salaryType === 'monthly' ? '0 2px 0 #804818' : '0 2px 0 #504a40',
+                    }}
                   >
-                    月
+                    月薪
                   </button>
                   <button
                     onClick={() => setSalary('yearly', salary)}
-                    className={`text-xs px-2 py-1 rounded transition-colors ${
-                      salaryType === 'yearly' ? 'bg-amber-500/50 text-white' : 'bg-white/10 text-white/50 hover:bg-white/20'
-                    }`}
+                    className="flex-1 py-1.5 rounded text-xs font-bold transition-all"
+                    style={{
+                      fontFamily: 'monospace',
+                      background: salaryType === 'yearly'
+                        ? 'linear-gradient(180deg, #d89040, #c07830)'
+                        : 'linear-gradient(180deg, #908878, #787060)',
+                      color: salaryType === 'yearly' ? '#fff' : '#c9c3b8',
+                      boxShadow: salaryType === 'yearly' ? '0 2px 0 #804818' : '0 2px 0 #504a40',
+                    }}
                   >
-                    年
+                    年薪
                   </button>
                   <input
                     type="number"
                     value={tempSalary}
                     onChange={(e) => setTempSalary(e.target.value)}
                     onBlur={handleSalarySubmit}
-                    className="w-20 bg-white/10 rounded px-2 py-1 text-xs text-white text-center focus:outline-none focus:ring-1 focus:ring-amber-500"
-                    placeholder="10000"
+                    className="w-24 py-1.5 px-2 rounded text-xs font-bold text-right"
+                    style={{
+                      fontFamily: '"Courier New", monospace',
+                      background: '#1a2a1a',
+                      color: '#8fa37d',
+                      border: '2px solid #0d1a0d',
+                      boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)',
+                    }}
                   />
                 </div>
               </div>
-            </div>
 
-            {/* 上班时间设置 */}
-            <div className="bg-white/5 rounded-lg p-3 border border-white/10 mb-4">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Clock className="w-3.5 h-3.5 text-blue-400" />
-                <span className="text-xs text-white/50">上班时间</span>
-                <span className="text-[10px] text-white/30 ml-auto">每日{workHours.toFixed(1)}小时</span>
-              </div>
-
-              {/* 上午 */}
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] text-amber-400/70 w-6">上午</span>
-                <input
-                  type="time"
-                  value={amStartTime}
-                  onChange={(e) => setWorkTime(e.target.value, amEndTime, pmStartTime, pmEndTime)}
-                  className="flex-1 bg-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                />
-                <span className="text-white/30 text-xs">~</span>
-                <input
-                  type="time"
-                  value={amEndTime}
-                  onChange={(e) => setWorkTime(amStartTime, e.target.value, pmStartTime, pmEndTime)}
-                  className="flex-1 bg-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
-                />
-              </div>
-
-              {/* 下午 */}
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-purple-400/70 w-6">下午</span>
-                <input
-                  type="time"
-                  value={pmStartTime}
-                  onChange={(e) => setWorkTime(amStartTime, amEndTime, e.target.value, pmEndTime)}
-                  className="flex-1 bg-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                />
-                <span className="text-white/30 text-xs">~</span>
-                <input
-                  type="time"
-                  value={pmEndTime}
-                  onChange={(e) => setWorkTime(amStartTime, amEndTime, pmStartTime, e.target.value)}
-                  className="flex-1 bg-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                />
-              </div>
-            </div>
-
-            {/* 统计栏 */}
-            <div className="bg-black/20 rounded-lg p-3 border border-white/5">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="text-center">
-                  <div className="text-[10px] text-green-400/70 mb-0.5">摸鱼</div>
-                  <div className="text-sm font-bold text-green-400">¥{getFishingEarnings().toFixed(1)}</div>
+              {/* 加班设置 */}
+              <div className="mb-3">
+                <div className="text-[10px] font-bold mb-2" style={{ color: '#5a5448', fontFamily: 'monospace' }}>
+                  ▸ 加班(亏)
                 </div>
-                <div className="text-center border-x border-white/10">
-                  <div className="text-[10px] text-red-400/70 mb-0.5">加班</div>
-                  <div className="text-sm font-bold text-red-400">-¥{Math.abs(getOvertimeEarnings()).toFixed(1)}</div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={tempOvertime}
+                    onChange={(e) => setTempOvertime(e.target.value)}
+                    onBlur={handleOvertimeSubmit}
+                    className="w-20 py-1.5 px-2 rounded text-xs font-bold text-right"
+                    style={{
+                      fontFamily: '"Courier New", monospace',
+                      background: '#2a1a1a',
+                      color: '#c48080',
+                      border: '2px solid #1a0d0d',
+                      boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)',
+                    }}
+                    step="0.5"
+                    min="0"
+                  />
+                  <span className="text-xs" style={{ color: '#6b6558', fontFamily: 'monospace' }}>小时</span>
                 </div>
-                <div className="text-center">
-                  <div className={`text-[10px] mb-0.5 ${netEarnings >= 0 ? 'text-amber-400/70' : 'text-red-400/70'}`}>
-                    {netEarnings >= 0 ? '净赚' : '净亏'}
+              </div>
+
+              {/* 工作时间 */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold" style={{ color: '#5a5448', fontFamily: 'monospace' }}>
+                    ▸ 工时 ({workHours.toFixed(1)}h/天)
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] w-6" style={{ color: '#8a6030', fontFamily: 'monospace' }}>上午</span>
+                    <input
+                      type="time"
+                      value={amStartTime}
+                      onChange={(e) => setWorkTime(e.target.value, amEndTime, pmStartTime, pmEndTime)}
+                      className="flex-1 py-1.5 px-2 rounded text-xs font-bold"
+                      style={{
+                        fontFamily: '"Courier New", monospace',
+                        background: '#1a2a1a',
+                        color: '#8fa37d',
+                        border: '2px solid #0d1a0d',
+                      }}
+                    />
+                    <span className="text-xs" style={{ color: '#6b6558' }}>~</span>
+                    <input
+                      type="time"
+                      value={amEndTime}
+                      onChange={(e) => setWorkTime(amStartTime, e.target.value, pmStartTime, pmEndTime)}
+                      className="flex-1 py-1.5 px-2 rounded text-xs font-bold"
+                      style={{
+                        fontFamily: '"Courier New", monospace',
+                        background: '#1a2a1a',
+                        color: '#8fa37d',
+                        border: '2px solid #0d1a0d',
+                      }}
+                    />
                   </div>
-                  <div className={`text-sm font-bold ${netEarnings >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
-                    ¥{netEarnings.toFixed(1)}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] w-6" style={{ color: '#603080', fontFamily: 'monospace' }}>下午</span>
+                    <input
+                      type="time"
+                      value={pmStartTime}
+                      onChange={(e) => setWorkTime(amStartTime, amEndTime, e.target.value, pmEndTime)}
+                      className="flex-1 py-1.5 px-2 rounded text-xs font-bold"
+                      style={{
+                        fontFamily: '"Courier New", monospace',
+                        background: '#1a2a1a',
+                        color: '#8fa37d',
+                        border: '2px solid #0d1a0d',
+                      }}
+                    />
+                    <span className="text-xs" style={{ color: '#6b6558' }}>~</span>
+                    <input
+                      type="time"
+                      value={pmEndTime}
+                      onChange={(e) => setWorkTime(amStartTime, amEndTime, pmStartTime, e.target.value)}
+                      className="flex-1 py-1.5 px-2 rounded text-xs font-bold"
+                      style={{
+                        fontFamily: '"Courier New", monospace',
+                        background: '#1a2a1a',
+                        color: '#8fa37d',
+                        border: '2px solid #0d1a0d',
+                      }}
+                    />
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* 底部操作 */}
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
-              <span className="text-[10px] text-white/30">数据本地保存</span>
-              <button
-                onClick={reset}
-                className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white/70 transition-colors"
-              >
-                <RotateCcw className="w-3 h-3" />
-                重置
-              </button>
+          {/* 底部装饰 */}
+          <div className="mt-4 flex justify-between items-center">
+            <div className="flex gap-1.5">
+              <div className="w-2 h-2 rounded-full" style={{ background: '#8a3030', boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.3)' }} />
+              <div className="w-2 h-2 rounded-full" style={{ background: isFishing ? '#508030' : '#3a4a30', boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.3)' }} />
             </div>
+            <span className="text-[8px]" style={{ color: '#7a7468', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+              MADE FOR SLACKERS
+            </span>
           </div>
         </div>
+
+        {/* 投在桌面上的影子 */}
+        <div
+          className="mx-auto mt-[-8px] rounded-[50%]"
+          style={{
+            width: '80%',
+            height: '20px',
+            background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 70%)',
+          }}
+        />
       </div>
     </div>
   );
