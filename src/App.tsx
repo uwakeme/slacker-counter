@@ -167,7 +167,7 @@ export default function App() {
                   />
                   <span className="text-xs text-white/40">小时</span>
                 </div>
-                <div className="text-xs text-purple-400 mt-1">+¥{getOvertimeEarnings().toFixed(1)}</div>
+                <div className="text-xs text-red-400 mt-1">-¥{Math.abs(getOvertimeEarnings()).toFixed(1)}</div>
               </div>
 
               {/* 快速设置 */}
@@ -257,8 +257,8 @@ export default function App() {
                   <div className="text-sm font-bold text-green-400">¥{getFishingEarnings().toFixed(1)}</div>
                 </div>
                 <div className="text-center border-x border-white/10">
-                  <div className="text-[10px] text-purple-400/70 mb-0.5">加班</div>
-                  <div className="text-sm font-bold text-purple-400">¥{getOvertimeEarnings().toFixed(1)}</div>
+                  <div className="text-[10px] text-red-400/70 mb-0.5">加班</div>
+                  <div className="text-sm font-bold text-red-400">-¥{Math.abs(getOvertimeEarnings()).toFixed(1)}</div>
                 </div>
                 <div className="text-center">
                   <div className={`text-[10px] mb-0.5 ${netEarnings >= 0 ? 'text-amber-400/70' : 'text-red-400/70'}`}>

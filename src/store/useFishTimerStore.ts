@@ -79,7 +79,7 @@ export const useFishTimerStore = create<FishTimerState>()(
       getOvertimeEarnings: () => {
         const { overtimeHours } = get();
         const hourlyRate = get().getHourlyRate();
-        return overtimeHours * hourlyRate * 1.5;
+        return -overtimeHours * hourlyRate;
       },
 
       getNetEarnings: () => {
