@@ -183,7 +183,7 @@ export default function App() {
               {/* 快速设置 */}
               <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                 <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-xs text-white/50">时薪设置</span>
+                  <span className="text-xs text-white/50">薪酬设置</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
