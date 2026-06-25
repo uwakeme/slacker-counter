@@ -1,30 +1,37 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+interface DailyRecord {
+  date: string;
+  fishingTime: number;
+  overtimeHours: number;
+  fishingEarnings: number;
+  overtimeEarnings: number;
+  netEarnings: number;
+}
+
 interface FishTimerState {
-  // 薪资信息
   salaryType: 'monthly' | 'yearly';
   salary: number;
-  // 上班时间（上午）
   amStartTime: string;
   amEndTime: string;
-  // 上班时间（下午）
   pmStartTime: string;
   pmEndTime: string;
-  // 摸鱼状态
   isFishing: boolean;
   fishingStartTime: number | null;
-  totalFishingTime: number;
-  // 加班时间
-  overtimeHours: number;
-  // 计算属性
+  currentSessionTime: number;
+  records: Record<string, DailyRecord>;
+  getTodayKey: () => string;
+  getTodayRecord: () => DailyRecord;
   getHourlyRate: () => number;
   getWorkHoursPerDay: () => number;
-  getFishingEarnings: () => number;
-  getOvertimeEarnings: () => number;
-  getNetEarnings: () => number;
+  getCurrentFishingTime: () => number;
+  getTodayFishingEarnings: () => number;
+  getTodayOvertimeEarnings: () => number;
+  getTodayNetEarnings: () => number;
   isDuringWorkTime: () => boolean;
-  // 操作
+  getMonthRecords: (year: number, month: number) => DailyRecord[];
+  getYearRecords: (year: number) => DailyRecord[];
   setSalary: (type: 'monthly' | 'yearly', salary: number) => void;
   setWorkTime: (amStart: string, amEnd: string, pmStart: string, pmEnd: string) => void;
   startFishing: () => void;
@@ -34,7 +41,22 @@ interface FishTimerState {
 }
 
 const WORK_DAYS_PER_MONTH = 22;
-const WORK_HOURS_PER_DAY = 8;
+
+function getTodayKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function createEmptyRecord(date: string): DailyRecord {
+  return {
+    date,
+    fishingTime: 0,
+    overtimeHours: 0,
+    fishingEarnings: 0,
+    overtimeEarnings: 0,
+    netEarnings: 0,
+  };
+}
 
 export const useFishTimerStore = create<FishTimerState>()(
   persist(
@@ -47,8 +69,15 @@ export const useFishTimerStore = create<FishTimerState>()(
       pmEndTime: '18:00',
       isFishing: false,
       fishingStartTime: null,
-      totalFishingTime: 0,
-      overtimeHours: 0,
+      currentSessionTime: 0,
+      records: {},
+
+      getTodayKey: () => getTodayKey(),
+
+      getTodayRecord: () => {
+        const key = getTodayKey();
+        return get().records[key] || createEmptyRecord(key);
+      },
 
       getHourlyRate: () => {
         const { salaryType, salary } = get();
@@ -70,78 +99,161 @@ export const useFishTimerStore = create<FishTimerState>()(
         return (amMinutes + pmMinutes) / 60;
       },
 
-      getFishingEarnings: () => {
-        const { totalFishingTime } = get();
-        const hourlyRate = get().getHourlyRate();
-        const hours = totalFishingTime / (1000 * 60 * 60);
-        return hours * hourlyRate;
+      getCurrentFishingTime: () => {
+        const { isFishing, fishingStartTime, currentSessionTime, getTodayRecord } = get();
+        const todayRecord = getTodayRecord();
+        if (isFishing && fishingStartTime) {
+          return todayRecord.fishingTime + currentSessionTime + (Date.now() - fishingStartTime);
+        }
+        return todayRecord.fishingTime + currentSessionTime;
       },
 
-      getOvertimeEarnings: () => {
-        const { overtimeHours } = get();
+      getTodayFishingEarnings: () => {
+        const fishingTime = get().getCurrentFishingTime();
         const hourlyRate = get().getHourlyRate();
-        return -overtimeHours * hourlyRate;
+        return (fishingTime / (1000 * 60 * 60)) * hourlyRate;
       },
 
-      getNetEarnings: () => {
-        return get().getFishingEarnings() + get().getOvertimeEarnings();
+      getTodayOvertimeEarnings: () => {
+        const todayRecord = get().getTodayRecord();
+        const hourlyRate = get().getHourlyRate();
+        return -todayRecord.overtimeHours * hourlyRate;
+      },
+
+      getTodayNetEarnings: () => {
+        return get().getTodayFishingEarnings() + get().getTodayOvertimeEarnings();
       },
 
       isDuringWorkTime: () => {
         const { amStartTime, amEndTime, pmStartTime, pmEndTime } = get();
         const now = new Date();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        
         const toMinutes = (t: string) => {
           const [h, m] = t.split(':').map(Number);
           return h * 60 + m;
         };
-        
         const amStart = toMinutes(amStartTime);
         const amEnd = toMinutes(amEndTime);
         const pmStart = toMinutes(pmStartTime);
         const pmEnd = toMinutes(pmEndTime);
-        
-        return (currentMinutes >= amStart && currentMinutes < amEnd) || 
+        return (currentMinutes >= amStart && currentMinutes < amEnd) ||
                (currentMinutes >= pmStart && currentMinutes < pmEnd);
       },
 
-      setSalary: (type, salary) => set({ salaryType: type, salary }),
+      getMonthRecords: (year: number, month: number) => {
+        const { records } = get();
+        const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+        return Object.values(records).filter(r => r.date.startsWith(prefix));
+      },
 
-      setWorkTime: (amStart, amEnd, pmStart, pmEnd) =>
-        set({ amStartTime: amStart, amEndTime: amEnd, pmStartTime: pmStart, pmEndTime: pmEnd }),
+      getYearRecords: (year: number) => {
+        const { records } = get();
+        const prefix = `${year}-`;
+        return Object.values(records).filter(r => r.date.startsWith(prefix));
+      },
 
-      startFishing: () =>
+      setSalary: (type, salary) => {
+        set({ salaryType: type, salary });
+        const hourlyRate = get().getHourlyRate();
+        set((state) => {
+          const key = getTodayKey();
+          const todayRecord = state.records[key] || createEmptyRecord(key);
+          return {
+            records: {
+              ...state.records,
+              [key]: {
+                ...todayRecord,
+                fishingEarnings: (todayRecord.fishingTime / (1000 * 60 * 60)) * hourlyRate,
+                overtimeEarnings: -todayRecord.overtimeHours * hourlyRate,
+                netEarnings: (todayRecord.fishingTime / (1000 * 60 * 60)) * hourlyRate - todayRecord.overtimeHours * hourlyRate,
+              },
+            },
+          };
+        });
+      },
+
+      setWorkTime: (amStart, amEnd, pmStart, pmEnd) => {
+        set({ amStartTime: amStart, amEndTime: amEnd, pmStartTime: pmStart, pmEndTime: pmEnd });
+      },
+
+      startFishing: () => {
         set({
           isFishing: true,
           fishingStartTime: Date.now(),
-        }),
+        });
+      },
 
-      stopFishing: () =>
+      stopFishing: () => {
         set((state) => {
           if (!state.fishingStartTime) {
             return { isFishing: false, fishingStartTime: null };
           }
           const elapsed = Date.now() - state.fishingStartTime;
+          const newSessionTime = state.currentSessionTime + elapsed;
+          const key = getTodayKey();
+          const hourlyRate = get().getHourlyRate();
+          const todayRecord = state.records[key] || createEmptyRecord(key);
+          const newFishingTime = todayRecord.fishingTime + newSessionTime;
+          const newFishingEarnings = (newFishingTime / (1000 * 60 * 60)) * hourlyRate;
+          const newOvertimeEarnings = -todayRecord.overtimeHours * hourlyRate;
+
           return {
             isFishing: false,
             fishingStartTime: null,
-            totalFishingTime: state.totalFishingTime + elapsed,
+            currentSessionTime: 0,
+            records: {
+              ...state.records,
+              [key]: {
+                date: key,
+                fishingTime: newFishingTime,
+                overtimeHours: todayRecord.overtimeHours,
+                fishingEarnings: newFishingEarnings,
+                overtimeEarnings: newOvertimeEarnings,
+                netEarnings: newFishingEarnings + newOvertimeEarnings,
+              },
+            },
           };
-        }),
+        });
+      },
 
-      setOvertimeHours: (hours) => set({ overtimeHours: hours }),
+      setOvertimeHours: (hours) => {
+        const hourlyRate = get().getHourlyRate();
+        set((state) => {
+          const key = getTodayKey();
+          const todayRecord = state.records[key] || createEmptyRecord(key);
+          const fishingEarnings = (todayRecord.fishingTime / (1000 * 60 * 60)) * hourlyRate;
+          const overtimeEarnings = -hours * hourlyRate;
+          return {
+            records: {
+              ...state.records,
+              [key]: {
+                date: key,
+                fishingTime: todayRecord.fishingTime,
+                overtimeHours: hours,
+                fishingEarnings,
+                overtimeEarnings,
+                netEarnings: fishingEarnings + overtimeEarnings,
+              },
+            },
+          };
+        });
+      },
 
-      reset: () =>
-        set({
+      reset: () => {
+        const key = getTodayKey();
+        set((state) => ({
           isFishing: false,
           fishingStartTime: null,
-          totalFishingTime: 0,
-          overtimeHours: 0,
-        }),
+          currentSessionTime: 0,
+          records: {
+            ...state.records,
+            [key]: createEmptyRecord(key),
+          },
+        }));
+      },
     }),
     {
-      name: 'fish-timer-storage',
+      name: 'fish-timer-storage-v2',
     }
   )
 );
