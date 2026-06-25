@@ -99,8 +99,12 @@ export const useFishTimerStore = create<FishTimerState>()(
 
       stopFishing: () =>
         set((state) => {
-          if (!state.fishingStartTime) return state;
+          console.log('stopFishing called', { fishingStartTime: state.fishingStartTime, isFishing: state.isFishing });
+          if (!state.fishingStartTime) {
+            return { isFishing: false, fishingStartTime: null };
+          }
           const elapsed = Date.now() - state.fishingStartTime;
+          console.log('stopFishing elapsed', elapsed);
           return {
             isFishing: false,
             fishingStartTime: null,
