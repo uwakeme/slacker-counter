@@ -1,14 +1,19 @@
 {
-  "name": "workspace",
+  "name": "slacker-counter",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "main": "electron/main.cjs",
+  "description": "上班摸鱼加班计算器 - 桌面端",
+  "author": "wake",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:electron": "electron .",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "check": "tsc -b --noEmit"
+    "check": "tsc -b --noEmit",
+    "pack:win": "npm run build && electron-builder --win portable --x64"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -19,6 +24,35 @@
     "tailwind-merge": "^3.0.2",
     "zustand": "^5.0.3"
   },
+  "build": {
+    "appId": "com.slacker.counter",
+    "productName": "Slacker Counter",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "slacker-counter-${version}-portable.${ext}"
+    },
+    "portable": {
+      "artifactName": "slacker-counter-${version}-portable.${ext}"
+    }
+  },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
     "@types/node": "^22.15.30",
@@ -27,6 +61,8 @@
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
     "babel-plugin-react-dev-locator": "^1.0.0",
+    "electron": "^42.5.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
@@ -36,7 +72,6 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5",
-    "vite-plugin-trae-solo-badge": "^1.0.0",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }
