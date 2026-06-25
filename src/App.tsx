@@ -97,7 +97,7 @@ export default function App() {
                 : 'bg-white/5 border border-white/10'
             }`}>
               {isFishing && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse pointer-events-none" />
               )}
 
               <div className="relative text-center">
