@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc -b --noEmit",
-    "pack:win": "npm run build && electron-builder --win portable --x64"
+    "pack:win": "npm run build && electron-builder --win nsis zip --x64",
+    "pack:portable": "npm run build && electron-builder --win zip --x64"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -41,16 +42,27 @@
     "win": {
       "target": [
         {
-          "target": "portable",
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "x64"
           ]
         }
       ],
-      "artifactName": "slacker-counter-${version}-portable.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
     },
     "portable": {
-      "artifactName": "slacker-counter-${version}-portable.${ext}"
+      "artifactName": "${productName}-Portable-${version}-${arch}.${ext}"
     }
   },
   "devDependencies": {

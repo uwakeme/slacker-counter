@@ -137,28 +137,87 @@ export default function App() {
 
   const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
+  const handleClose = () => {
+    (window as unknown as { slackerAPI?: { closeWindow?: () => void } }).slackerAPI?.closeWindow?.();
+  };
+  const handleMinimize = () => {
+    (window as unknown as { slackerAPI?: { minimizeWindow?: () => void } }).slackerAPI?.minimizeWindow?.();
+  };
+  const setWindowSize = (height: number) => {
+    (window as unknown as { slackerAPI?: { setWindowSize?: (w: number, h: number) => void } })
+      .slackerAPI?.setWindowSize?.(480, height);
+  };
+
+  // 根据 viewMode + 设置面板展开状态动态调整窗口高度,避免下方空白
+  useEffect(() => {
+    // 高度估算:标题栏(36) + 内容区 pt(16) + 卡片 padding(40)
+    //         + 模式按钮(38) + LCD(计时 200 / 日历·统计 280) + mb(16)
+    //         + 统计行(仅计时,76) + 按钮区(仅计时,92) + mt(16)
+    //         + 底部装饰(20) + 内容区 pb(16)
+    let h = 36 + 16 + 40 + 38 + 16 + 20 + 16; // 共享部分
+    h += viewMode === 'timer' ? 200 : 280;     // LCD 屏
+    if (viewMode === 'timer') {
+      h += 76 + 92;                            // 统计行 + 按钮区
+      if (showSettings) h += 250;              // 设置面板
+    }
+    setWindowSize(h);
+  }, [viewMode, showSettings]);
+
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{ background: 'radial-gradient(ellipse at 50% 40%, #2a2520 0%, #1a1510 50%, #0f0d0a 100%)' }}
+      className="min-h-screen flex flex-col"
+      style={{
+        background: 'linear-gradient(180deg, #d4cfc5 0%, #c9c3b8 8%, #b8b2a6 60%, #aca698 100%)',
+      }}
     >
-      <div className="w-[400px]">
-        <div
-          className="relative rounded-[20px] p-5 shadow-2xl"
-          style={{
-            background: 'linear-gradient(180deg, #d4cfc5 0%, #c9c3b8 10%, #bdb6a9 50%, #b0a89c 90%, #a59e92 100%)',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.15)',
-          }}
+      {/* 自定义标题栏 — 左上角红 × / 黄 — 按钮,中间品牌标签,整条可拖拽 */}
+      <div
+        className="flex items-center justify-between px-3 shrink-0"
+        style={{ height: 36, WebkitAppRegion: 'drag', userSelect: 'none' } as React.CSSProperties}
+      >
+        <div className="flex items-center gap-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <button
+            onClick={handleClose}
+            aria-label="关闭"
+            title="关闭"
+            className="w-3.5 h-3.5 rounded-full flex items-center justify-center transition-transform active:scale-90"
+            style={{
+              background: 'radial-gradient(circle at 35% 35%, #ff6b6b 0%, #d83a3a 60%, #8a1818 100%)',
+              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.3)',
+            }}
+          >
+            <span style={{ color: 'rgba(0,0,0,0.55)', fontSize: 10, fontWeight: 700, lineHeight: 1, marginTop: -1 }}>×</span>
+          </button>
+          <button
+            onClick={handleMinimize}
+            aria-label="最小化"
+            title="最小化"
+            className="w-3.5 h-3.5 rounded-full flex items-center justify-center transition-transform active:scale-90"
+            style={{
+              background: 'radial-gradient(circle at 35% 35%, #f5d04a 0%, #e0b020 60%, #a88010 100%)',
+              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.3)',
+            }}
+          />
+        </div>
+        <span
+          className="text-[10px] tracking-[0.3em] font-bold uppercase pointer-events-none"
+          style={{ color: '#6b6558', fontFamily: 'monospace' }}
         >
-          {/* 品牌标签 */}
-          <div className="text-center mb-3">
-            <span
-              className="text-[10px] tracking-[0.3em] font-bold uppercase"
-              style={{ color: '#6b6558', fontFamily: 'monospace' }}
-            >
-              ◈ FISHER-PRO 9000 ◈
-            </span>
-          </div>
+          ◈ FISHER-PRO 9000 ◈
+        </span>
+        <div style={{ width: 56 }} aria-hidden />
+      </div>
+
+      {/* 设备面板 — 不再被外层深色背景包住,直接铺满窗口 */}
+      <div className="flex-1 px-4 pb-4 overflow-auto">
+        <div className="max-w-[440px] mx-auto">
+          <div
+            className="relative rounded-[20px] p-5 shadow-2xl"
+            style={{
+              background: 'linear-gradient(180deg, #d4cfc5 0%, #c9c3b8 10%, #bdb6a9 50%, #b0a89c 90%, #a59e92 100%)',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.15)',
+            }}
+          >
 
           {/* 模式切换 */}
           <div className="flex gap-1 mb-3">
@@ -623,12 +682,8 @@ export default function App() {
               MADE FOR SLACKERS
             </span>
           </div>
+          </div>
         </div>
-
-        <div
-          className="mx-auto mt-[-8px] rounded-[50%]"
-          style={{ width: '80%', height: '20px', background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 70%)' }}
-        />
       </div>
     </div>
   );
