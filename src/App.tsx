@@ -1,5 +1,6 @@
 import { useFishTimerStore } from '@/store/useFishTimerStore';
 import { useState, useEffect, useMemo } from 'react';
+import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 
 function formatTime(ms: number): string {
   if (ms < 0) ms = 0;
@@ -11,6 +12,19 @@ function formatTime(ms: number): string {
 }
 
 type ViewMode = 'timer' | 'calendar' | 'stats';
+
+const DAILY_QUOTES = [
+  '摸鱼一时爽,一直摸鱼一直爽',
+  '努力不一定成功,但不努力真的好舒服',
+  '今天的摸鱼,明天的回忆',
+  '只要我不努力,老板就赚不到我的剩余价值',
+  '打工是为了更好地摸鱼',
+  '我上班就是为了下班',
+  '摸鱼是对生活最起码的尊重',
+  '上班如戏,全靠演技',
+  '今天的班,明天的退休',
+  '摸鱼赚钱两不误,人生赢家就是我',
+];
 
 export default function App() {
   const {
@@ -25,7 +39,6 @@ export default function App() {
     records,
     getHourlyRate,
     getWorkHoursPerDay,
-    getCurrentFishingTime,
     getTodayFishingEarnings,
     getTodayOvertimeEarnings,
     getTodayNetEarnings,
@@ -133,32 +146,87 @@ export default function App() {
     return { totalFish, totalOvertime, totalFishEarn, totalOverEarn, totalNet, days: yearRecords.length };
   }, [yearRecords]);
 
+  // 工时进度 — 当前时间在工作时间窗口里的百分比
+  const workdayProgress = useMemo(() => {
+    const toMin = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const totalMin = getWorkHoursPerDay() * 60;
+    if (totalMin <= 0) return 0;
+    const now = new Date();
+    const curMin = now.getHours() * 60 + now.getMinutes();
+    const amS = toMin(amStartTime);
+    const amE = toMin(amEndTime);
+    const pmS = toMin(pmStartTime);
+    const pmE = toMin(pmEndTime);
+    let elapsed = 0;
+    if (curMin >= amS) elapsed += Math.min(curMin, amE) - amS;
+    if (curMin >= pmS) elapsed += Math.min(curMin, pmE) - pmS;
+    return Math.min(100, Math.max(0, (elapsed / totalMin) * 100));
+  }, [amStartTime, amEndTime, pmStartTime, pmEndTime, records]);
+
+  // 近 7 日每日净收益
+  const last7Days = useMemo(() => {
+    const days: { date: string; value: number; weekday: number }[] = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const rec = records[key];
+      days.push({ date: key, value: rec ? rec.netEarnings : 0, weekday: d.getDay() });
+    }
+    return days;
+  }, [records]);
+
+  const weekNet = useMemo(() => last7Days.reduce((s, d) => s + d.value, 0), [last7Days]);
+
+  // 今日摸鱼宣言 — 按日期轮换
+  const dailyQuote = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now.getTime() - start.getTime()) / 86400000);
+    return DAILY_QUOTES[dayOfYear % DAILY_QUOTES.length];
+  }, []);
+
   const selectedRecord = selectedDate ? records[selectedDate] : null;
 
   const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
-  const handleClose = () => {
-    (window as unknown as { slackerAPI?: { closeWindow?: () => void } }).slackerAPI?.closeWindow?.();
+  const handleClose = async () => {
+    try {
+      await getCurrentWindow().close();
+    } catch (err) {
+      console.error('[window] close failed:', err);
+    }
   };
-  const handleMinimize = () => {
-    (window as unknown as { slackerAPI?: { minimizeWindow?: () => void } }).slackerAPI?.minimizeWindow?.();
+  const handleMinimize = async () => {
+    try {
+      await getCurrentWindow().minimize();
+    } catch (err) {
+      console.error('[window] minimize failed:', err);
+    }
   };
   const setWindowSize = (height: number) => {
-    (window as unknown as { slackerAPI?: { setWindowSize?: (w: number, h: number) => void } })
-      .slackerAPI?.setWindowSize?.(480, height);
+    void getCurrentWindow().setSize(new LogicalSize(480, height)).catch((err) => {
+      console.error('[window] setSize failed:', err);
+    });
   };
 
   // 根据 viewMode + 设置面板展开状态动态调整窗口高度,避免下方空白
   useEffect(() => {
-    // 高度估算:标题栏(36) + 内容区 pt(16) + 卡片 padding(40)
-    //         + 模式按钮(38) + LCD(计时 200 / 日历·统计 280) + mb(16)
-    //         + 统计行(仅计时,76) + 按钮区(仅计时,92) + mt(16)
-    //         + 底部装饰(20) + 内容区 pb(16)
-    let h = 36 + 16 + 40 + 38 + 16 + 20 + 16; // 共享部分
+    // 共享部分:标题栏(36) + 卡片 padding-top(20) + 模式按钮(38)
+    //         + LCD margin-bottom(16) + 底部装饰(20) + 卡片 padding-bottom(20) + 内容区 pb(16)
+    let h = 36 + 20 + 38 + 16 + 20 + 20 + 16;
     h += viewMode === 'timer' ? 200 : 280;     // LCD 屏
     if (viewMode === 'timer') {
       h += 76 + 92;                            // 统计行 + 按钮区
-      if (showSettings) h += 250;              // 设置面板
+      if (showSettings) {
+        h += 250;                              // 设置面板
+      } else {
+        h += 100;                              // 今日状态面板 (进度条 + 7日图 + 宣言 ≈ 90)
+      }
     }
     setWindowSize(h);
   }, [viewMode, showSettings]);
@@ -551,6 +619,86 @@ export default function App() {
                 >
                   ⟳
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* 今日状态面板 - 仅计时模式,设置面板未展开时填补空白 */}
+          {viewMode === 'timer' && !showSettings && (
+            <div
+              className="mt-3 rounded-md p-2.5"
+              style={{
+                background: 'linear-gradient(180deg, #1a2418 0%, #0e1a0e 100%)',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(120,160,90,0.15), 0 1px 0 rgba(255,255,255,0.04)',
+                fontFamily: '"Courier New", monospace',
+              }}
+            >
+              {/* 工时进度 */}
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[9px] tracking-wider shrink-0" style={{ color: '#5a7040' }}>工时</span>
+                <div
+                  className="flex-1 relative h-2.5 rounded-sm overflow-hidden"
+                  style={{ background: '#0a1408', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)' }}
+                >
+                  <div
+                    className="absolute inset-y-0 left-0"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, workdayProgress))}%`,
+                      background: 'linear-gradient(180deg, #7aa050 0%, #4a7030 100%)',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ background: 'repeating-linear-gradient(90deg, transparent 0, transparent 7px, rgba(0,0,0,0.35) 7px, rgba(0,0,0,0.35) 8px)' }}
+                  />
+                </div>
+                <span className="text-[10px] font-bold w-9 text-right shrink-0 tabular-nums" style={{ color: '#8fa37d' }}>
+                  {Math.round(workdayProgress)}%
+                </span>
+              </div>
+
+              {/* 近 7 日柱状图 */}
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] tracking-wider shrink-0" style={{ color: '#5a7040' }}>7日</span>
+                <div className="flex-1 flex items-end gap-0.5 h-7">
+                  {last7Days.map((d, i) => {
+                    const maxAbs = Math.max(1, ...last7Days.map(x => Math.abs(x.value)));
+                    const heightPct = d.value === 0 ? 8 : Math.max(12, (Math.abs(d.value) / maxAbs) * 92);
+                    const isToday = i === last7Days.length - 1;
+                    return (
+                      <div key={d.date} className="flex-1 flex flex-col items-center justify-end h-full relative" title={`${d.date}: ${d.value >= 0 ? '+' : ''}¥${d.value.toFixed(1)}`}>
+                        {isToday && (
+                          <span className="absolute -top-2 text-[7px] leading-none" style={{ color: '#a0c080' }}>▼</span>
+                        )}
+                        <div
+                          className="w-full rounded-sm"
+                          style={{
+                            height: `${heightPct}%`,
+                            background: d.value >= 0
+                              ? 'linear-gradient(180deg, #7aa050 0%, #5a8030 100%)'
+                              : 'linear-gradient(180deg, #b07050 0%, #804030 100%)',
+                            boxShadow: isToday
+                              ? '0 0 6px rgba(143,180,100,0.7), inset 0 1px 0 rgba(255,255,255,0.2)'
+                              : 'inset 0 1px 0 rgba(255,255,255,0.1)',
+                            minHeight: 2,
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <span className="text-[10px] font-bold w-12 text-right shrink-0 tabular-nums" style={{ color: weekNet >= 0 ? '#8fa37d' : '#c49080' }}>
+                  {weekNet >= 0 ? '+' : ''}¥{weekNet.toFixed(0)}
+                </span>
+              </div>
+
+              {/* 今日摸鱼宣言 */}
+              <div
+                className="mt-2 pt-1.5 text-[9px] text-center italic tracking-wide"
+                style={{ color: '#6a8050', borderTop: '1px dashed rgba(120,160,90,0.18)' }}
+              >
+                「 {dailyQuote} 」
               </div>
             </div>
           )}

@@ -2,79 +2,35 @@
   "name": "slacker-counter",
   "private": true,
   "version": "1.0.0",
-  "main": "electron/main.cjs",
   "description": "上班摸鱼加班计算器 - 桌面端",
   "author": "wake",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:electron": "electron .",
+    "dev": "tauri dev",
+    "dev:web": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "build:web": "tsc -b && vite build",
     "preview": "vite preview",
+    "lint": "eslint .",
     "check": "tsc -b --noEmit",
-    "pack:win": "npm run build && electron-builder --win nsis zip --x64",
-    "pack:portable": "npm run build && electron-builder --win zip --x64"
+    "tauri": "tauri",
+    "pack:win": "npm run build && tauri build"
   },
   "dependencies": {
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.511.0",
+    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/plugin-shell": "^2.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.3.0",
-    "tailwind-merge": "^3.0.2",
     "zustand": "^5.0.3"
-  },
-  "build": {
-    "appId": "com.slacker.counter",
-    "productName": "Slacker Counter",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
-    "extraResources": [],
-    "asar": true,
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
-    },
-    "portable": {
-      "artifactName": "${productName}-Portable-${version}-${arch}.${ext}"
-    }
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@tauri-apps/cli": "^2.1.0",
     "@types/node": "^22.15.30",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
-    "babel-plugin-react-dev-locator": "^1.0.0",
-    "electron": "^42.5.0",
-    "electron-builder": "^26.15.3",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
