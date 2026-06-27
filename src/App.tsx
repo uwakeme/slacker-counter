@@ -208,7 +208,7 @@ export default function App() {
       console.error('[window] minimize failed:', err);
     }
   };
-  const setWindowSize = (height: number) => {
+const setWindowSize = (height: number) => {
     void getCurrentWindow().setSize(new LogicalSize(480, height)).catch((err) => {
       console.error('[window] setSize failed:', err);
     });
@@ -216,18 +216,21 @@ export default function App() {
 
   // 根据 viewMode + 设置面板展开状态动态调整窗口高度,避免下方空白
   useEffect(() => {
-    // 共享部分:标题栏(36) + 卡片 padding-top(20) + 模式按钮(38)
-    //         + LCD margin-bottom(16) + 底部装饰(20) + 卡片 padding-bottom(20) + 内容区 pb(16)
-    let h = 36 + 20 + 38 + 16 + 20 + 20 + 16;
-    h += viewMode === 'timer' ? 200 : 280;     // LCD 屏
+    // 标题栏 36,内容区 pt 0,卡片 pt 20,
+    // LCD:计时 196 / 日历·统计 280,
+    // 计时模式额外:统计 62 + 按钮 78 + 今日面板 96 (设置时换 250),
+    // 卡片 pb 20,内容区 pb 16
+    let h = 36 + 20;
+    h += viewMode === 'timer' ? 196 : 280;
     if (viewMode === 'timer') {
-      h += 76 + 92;                            // 统计行 + 按钮区
+      h += 62 + 78;                            // 统计行 + 按钮区
       if (showSettings) {
         h += 250;                              // 设置面板
       } else {
-        h += 100;                              // 今日状态面板 (进度条 + 7日图 + 宣言 ≈ 90)
+        h += 96;                               // 今日状态面板
       }
     }
+    h += 20 + 16;                              // 卡片 pb + 内容区 pb
     setWindowSize(h);
   }, [viewMode, showSettings]);
 
@@ -241,15 +244,28 @@ export default function App() {
       {/* 自定义标题栏 — 左上角红 × / 黄 — 按钮,中间品牌标签,整条可拖拽 */}
       <div
         className="flex items-center justify-between px-3 shrink-0"
-        style={{ height: 36, WebkitAppRegion: 'drag', userSelect: 'none' } as React.CSSProperties}
+        style={{
+          height: 36,
+          WebkitAppRegion: 'drag',
+          ['webkit-app-region' as string]: 'drag',
+          userSelect: 'none',
+        } as React.CSSProperties}
       >
-        <div className="flex items-center gap-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <div
+          className="flex items-center gap-2"
+          style={{
+            WebkitAppRegion: 'no-drag',
+            ['webkit-app-region' as string]: 'no-drag',
+          } as React.CSSProperties}
+        >
           <button
             onClick={handleClose}
             aria-label="关闭"
             title="关闭"
             className="w-3.5 h-3.5 rounded-full flex items-center justify-center transition-transform active:scale-90"
             style={{
+              pointerEvents: 'auto',
+              cursor: 'pointer',
               background: 'radial-gradient(circle at 35% 35%, #ff6b6b 0%, #d83a3a 60%, #8a1818 100%)',
               boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.3)',
             }}
@@ -262,6 +278,8 @@ export default function App() {
             title="最小化"
             className="w-3.5 h-3.5 rounded-full flex items-center justify-center transition-transform active:scale-90"
             style={{
+              pointerEvents: 'auto',
+              cursor: 'pointer',
               background: 'radial-gradient(circle at 35% 35%, #f5d04a 0%, #e0b020 60%, #a88010 100%)',
               boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.3)',
             }}
