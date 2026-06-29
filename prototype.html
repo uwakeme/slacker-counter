@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>摸鱼计数器 — Deep Ocean</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --ocean-deep: #04080f;
+  --ocean-mid: #081828;
+  --ocean-surface: #0d2847;
+  --card-bg: rgba(12, 30, 55, 0.65);
+  --card-border: rgba(100, 180, 255, 0.08);
+  --card-glow: rgba(80, 160, 255, 0.04);
+  --text-bright: #d4e8ff;
+  --text-mid: #7ea8d4;
+  --text-dim: #3a6080;
+  --biolum: #00e8a2;
+  --biolum-dim: #00a872;
+  --biolum-glow: rgba(0, 232, 162, 0.35);
+  --coral: #ff6b8a;
+  --coral-dim: #cc4060;
+  --coral-glow: rgba(255, 107, 138, 0.3);
+  --sand: #e8c874;
+  --sand-dim: #b89844;
+  --bubble: rgba(140, 210, 255, 0.15);
+  --whale: #4a80b4;
+  --whale-dark: #2a5070;
+  --font: 'Outfit', 'Noto Sans SC', system-ui, sans-serif;
+  --mono: 'Outfit', monospace;
+  --r: 16px;
+}
+html{font-size:16px}
+body{
+  font-family:var(--font);
+  background:var(--ocean-deep);
+  color:var(--text-bright);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ─── OCEAN BACKGROUND ───────────────────────────── */
+.ocean-bg{
+  position:fixed;inset:0;z-index:0;
+  background:linear-gradient(180deg,#04080f 0%,#081828 30%,#0d2847 70%,#103058 100%);
+}
+.ocean-bg::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 600px 300px at 20% 80%, rgba(0,232,162,0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 400px at 80% 20%, rgba(80,160,255,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 200px at 50% 50%, rgba(255,107,138,0.02) 0%, transparent 70%);
+}
+/* Light rays */
+.light-rays{
+  position:fixed;top:-20%;left:50%;transform:translateX(-50%);
+  width:120%;height:60%;z-index:0;pointer-events:none;
+  background:
+    linear-gradient(175deg, rgba(140,210,255,0.04) 0%, transparent 40%),
+    linear-gradient(185deg, rgba(140,210,255,0.03) 0%, transparent 35%),
+    linear-gradient(170deg, rgba(140,210,255,0.02) 0%, transparent 45%);
+}
+
+/* ─── BUBBLES CANVAS ──────────────────────────────── */
+#bubbles-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* ─── WHALE ──────────────────────────────────────── */
+.whale-container{
+  position:fixed;z-index:0;pointer-events:none;
+  bottom:12%;right:-100px;
+  animation:whale-swim 40s ease-in-out infinite;
+}
+@keyframes whale-swim{
+  0%{transform:translate(0,0) rotate(0deg)}
+  25%{transform:translate(-110vw,-30px) rotate(-2deg)}
+  50%{transform:translate(-130vw,20px) rotate(1deg)}
+  75%{transform:translate(-60vw,-10px) rotate(-1deg)}
+  100%{transform:translate(0,0) rotate(0deg)}
+}
+.whale-body{
+  position:relative;width:180px;height:80px;
+}
+.whale-main{
+  position:absolute;width:140px;height:60px;
+  background:linear-gradient(180deg,var(--whale) 0%,var(--whale-dark) 100%);
+  border-radius:60% 50% 40% 50%;opacity:0.15;
+}
+.whale-tail{
+  position:absolute;left:-20px;top:8px;
+  width:40px;height:40px;
+  border:16px solid transparent;
+  border-right:20px solid var(--whale-dark);
+  border-radius:0 0 0 50%;opacity:0.15;
+  transform:rotate(-10deg);
+}
+.whale-belly{
+  position:absolute;bottom:0;left:20px;width:90px;height:25px;
+  background:rgba(140,200,240,0.1);
+  border-radius:50%;opacity:0.12;
+}
+
+/* ─── MAIN LAYOUT ────────────────────────────────── */
+.app-shell{
+  position:relative;z-index:1;
+  max-width:480px;margin:0 auto;
+  padding:16px 16px 32px;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+}
+
+/* ─── TITLE BAR ──────────────────────────────────── */
+.hud-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0 16px;
+}
+.hud-left{display:flex;gap:6px;align-items:center}
+.hud-btn{
+  width:28px;height:28px;border-radius:50%;border:none;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;
+  font-size:12px;
+}
+.hud-btn.close{background:rgba(255,107,138,0.15);color:var(--coral)}
+.hud-btn.close:hover{background:rgba(255,107,138,0.3)}
+.hud-btn.min{background:rgba(232,200,116,0.15);color:var(--sand)}
+.hud-btn.min:hover{background:rgba(232,200,116,0.3)}
+
+.hud-brand{
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  letter-spacing:0.2em;color:var(--text-dim);text-transform:uppercase;
+}
+
+/* ─── NAV ─────────────────────────────────────────── */
+.ocean-nav{
+  display:flex;gap:4px;padding:4px;
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  border-radius:var(--r);margin-bottom:20px;
+  backdrop-filter:blur(20px);
+}
+.nav-btn{
+  flex:1;padding:10px 0;border:none;border-radius:12px;
+  font-family:var(--font);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .25s;
+  background:transparent;color:var(--text-dim);
+  letter-spacing:0.04em;
+}
+.nav-btn:hover{color:var(--text-mid)}
+.nav-btn.active{
+  background:rgba(0,232,162,0.1);
+  color:var(--biolum);
+  box-shadow:0 0 20px rgba(0,232,162,0.08);
+}
+.nav-icon{margin-right:6px;font-size:14px}
+
+/* ─── TAB CONTENT ────────────────────────────────── */
+.tab-panel{display:none;animation:fadeUp .4s ease-out}
+.tab-panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── GLASS CARD ─────────────────────────────────── */
+.glass{
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  border-radius:var(--r);
+  backdrop-filter:blur(20px);
+  padding:20px;
+  margin-bottom:16px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 var(--card-glow);
+}
+
+/* ─── TIMER TAB ────────────────────────────────────── */
+
+/* Ring timer */
+.ring-container{
+  display:flex;justify-content:center;margin-bottom:24px;position:relative;
+}
+.ring-svg{width:220px;height:220px;transform:rotate(-90deg)}
+.ring-track{
+  fill:none;stroke:rgba(100,180,255,0.06);stroke-width:6;
+}
+.ring-progress{
+  fill:none;stroke:var(--biolum);stroke-width:6;
+  stroke-linecap:round;
+  transition:stroke-dashoffset .5s ease;
+  filter:drop-shadow(0 0 8px var(--biolum-glow));
+}
+.ring-inner-text{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.ring-time{
+  font-family:var(--mono);font-size:42px;font-weight:800;
+  color:var(--text-bright);letter-spacing:0.04em;line-height:1;
+}
+.ring-time .sec{font-size:22px;font-weight:400;color:var(--text-mid);margin-left:2px}
+.ring-sublabel{
+  font-size:11px;color:var(--text-dim);margin-top:8px;
+  font-weight:500;letter-spacing:0.08em;
+}
+
+/* Status pill */
+.status-row{
+  display:flex;justify-content:center;gap:12px;margin-bottom:20px;
+}
+.status-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 16px;border-radius:20px;
+  font-size:11px;font-weight:600;letter-spacing:0.06em;
+}
+.status-pill.idle{background:rgba(122,168,212,0.08);color:var(--text-dim);border:1px solid rgba(122,168,212,0.1)}
+.status-pill.working{background:rgba(80,160,255,0.08);color:#58a6ff;border:1px solid rgba(80,160,255,0.1)}
+.status-pill.fishing{background:rgba(0,232,162,0.08);color:var(--biolum);border:1px solid rgba(0,232,162,0.15)}
+.status-pill.fishing .dot{animation:pulse-dot 1.2s ease-in-out infinite}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+/* Earnings hero */
+.earnings-hero{
+  display:flex;justify-content:center;gap:48px;margin-bottom:8px;
+}
+.earn-block{text-align:center}
+.earn-label{font-size:10px;font-weight:600;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px}
+.earn-val{font-family:var(--mono);font-size:28px;font-weight:800}
+.earn-val.green{color:var(--biolum)}
+.earn-val.amber{color:var(--sand)}
+
+/* Action buttons */
+.action-area{display:flex;gap:10px;margin-bottom:16px}
+.btn-fish{
+  flex:1;padding:16px;border:none;border-radius:14px;
+  font-family:var(--font);font-size:14px;font-weight:700;
+  cursor:pointer;transition:all .25s;letter-spacing:0.04em;
+  position:relative;overflow:hidden;
+}
+.btn-fish.start{
+  background:linear-gradient(135deg,#00c88a,var(--biolum));
+  color:#042a18;
+  box-shadow:0 6px 24px rgba(0,232,162,0.2);
+}
+.btn-fish.start:hover{box-shadow:0 8px 32px rgba(0,232,162,0.35);transform:translateY(-2px)}
+.btn-fish.start:active{transform:translateY(1px)}
+.btn-fish.stop{
+  background:linear-gradient(135deg,var(--coral-dim),var(--coral));
+  color:#fff;
+  box-shadow:0 6px 24px rgba(255,107,138,0.2);
+  animation:stop-glow 2s ease-in-out infinite;
+}
+@keyframes stop-glow{
+  0%,100%{box-shadow:0 6px 24px rgba(255,107,138,0.2)}
+  50%{box-shadow:0 6px 36px rgba(255,107,138,0.35)}
+}
+
+.btn-icon-round{
+  width:52px;height:52px;border-radius:14px;border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .2s;font-size:18px;
+  background:var(--card-bg);border:1px solid var(--card-border);
+  color:var(--text-mid);backdrop-filter:blur(10px);
+}
+.btn-icon-round:hover{border-color:var(--biolum-dim);color:var(--biolum);box-shadow:0 0 16px var(--biolum-glow)}
+.btn-icon-round:active{transform:scale(.92)}
+
+/* Mini stats */
+.mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.mini-stat{
+  text-align:center;padding:14px 8px;border-radius:12px;
+  background:rgba(0,0,0,0.2);border:1px solid rgba(100,180,255,0.04);
+}
+.mini-stat-label{font-size:9px;font-weight:600;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px}
+.mini-stat-val{font-family:var(--mono);font-size:18px;font-weight:800}
+.mini-stat-val.pos{color:var(--biolum)}
+.mini-stat-val.neg{color:var(--coral)}
+.mini-stat-val.neu{color:var(--sand)}
+
+/* Progress bar */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.prog-label{font-size:10px;font-weight:600;color:var(--text-dim);letter-spacing:0.1em;width:32px;flex-shrink:0}
+.prog-track{flex:1;height:6px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width 1s ease;box-shadow:0 0 8px var(--biolum-glow)}
+.prog-fill.green{background:linear-gradient(90deg,var(--biolum-dim),var(--biolum))}
+.prog-pct{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--biolum);width:36px;text-align:right;flex-shrink:0}
+
+/* Mini bar chart */
+.mini-bars{display:flex;align-items:flex-end;gap:3px;height:36px;flex:1}
+.mini-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative}
+.mini-bar{width:100%;border-radius:2px;min-height:2px;transition:height .6s ease}
+.mini-bar.pos{background:linear-gradient(0deg,var(--biolum-dim),var(--biolum))}
+.mini-bar.neg{background:linear-gradient(0deg,var(--coral-dim),var(--coral))}
+.mini-bar.today{box-shadow:0 0 8px var(--biolum-glow)}
+.mini-bar-marker{position:absolute;top:-8px;font-size:7px;color:var(--biolum)}
+.mini-bar-total{font-family:var(--mono);font-size:12px;font-weight:700;width:52px;text-align:right;flex-shrink:0}
+
+/* Achievement toast */
+.achievement{
+  margin-bottom:16px;padding:14px 16px;border-radius:12px;
+  background:linear-gradient(135deg,rgba(232,200,116,0.08),rgba(232,200,116,0.03));
+  border:1px solid rgba(232,200,116,0.15);
+  display:flex;align-items:center;gap:12px;
+  animation:slideIn .4s ease-out;
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.achievement-icon{font-size:28px;flex-shrink:0}
+.achievement-text{font-size:12px;font-weight:600;color:var(--sand);line-height:1.4}
+.achievement-text small{display:block;font-weight:400;color:var(--sand-dim);font-size:10px;margin-top:2px}
+
+/* Quote */
+.ocean-quote{
+  text-align:center;font-size:11px;color:var(--text-dim);
+  font-style:italic;margin-top:12px;padding-top:12px;
+  border-top:1px solid rgba(100,180,255,0.06);letter-spacing:0.03em;
+}
+
+/* ─── SETTINGS ────────────────────────────────────── */
+.settings-section{margin-bottom:18px}
+.settings-section:last-child{margin-bottom:0}
+.settings-title{
+  font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:0.1em;
+  margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.settings-title::before{
+  content:'';width:3px;height:12px;border-radius:2px;background:var(--biolum-dim);
+}
+.toggle-group{display:flex;gap:4px;margin-bottom:10px}
+.toggle-item{
+  flex:1;padding:10px;border:1px solid var(--card-border);border-radius:10px;
+  font-family:var(--font);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .2s;background:rgba(0,0,0,0.2);color:var(--text-dim);text-align:center;
+}
+.toggle-item.active{background:rgba(0,232,162,0.1);border-color:var(--biolum-dim);color:var(--biolum)}
+.input-row{display:flex;gap:8px;align-items:center}
+.ocean-input{
+  flex:1;padding:12px 14px;border:1px solid var(--card-border);border-radius:10px;
+  font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text-bright);
+  background:rgba(0,0,0,0.3);transition:all .2s;
+}
+.ocean-input:focus{outline:none;border-color:var(--biolum-dim);box-shadow:0 0 0 3px rgba(0,232,162,0.08)}
+.input-suffix{font-size:12px;color:var(--text-dim);flex-shrink:0;font-weight:500}
+.time-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.time-row:last-child{margin-bottom:0}
+.time-period{font-size:10px;font-weight:700;color:var(--sand);width:28px;flex-shrink:0;text-align:right;letter-spacing:0.06em}
+.time-row .ocean-input{flex:1;min-width:0}
+.time-sep{color:var(--text-dim);font-size:12px;flex-shrink:0}
+
+/* ─── CALENDAR / HEATMAP TAB ─────────────────────── */
+.heatmap-month{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;
+}
+.heatmap-title{font-size:16px;font-weight:700;color:var(--text-bright)}
+.heatmap-nav{
+  width:32px;height:32px;border-radius:10px;border:1px solid var(--card-border);
+  background:transparent;color:var(--text-mid);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .2s;
+}
+.heatmap-nav:hover{border-color:var(--text-dim);color:var(--text-bright)}
+
+.heatmap-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:5px;
+}
+.heatmap-cell{
+  aspect-ratio:1;border-radius:8px;border:none;
+  cursor:pointer;transition:all .15s;position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  background:rgba(255,255,255,0.02);color:var(--text-dim);
+}
+.heatmap-cell:hover{transform:scale(1.1);z-index:2}
+.heatmap-cell.today{outline:2px solid var(--sand);outline-offset:-2px}
+.heatmap-cell.selected{outline:2px solid var(--biolum);outline-offset:-2px}
+.heatmap-cell.l0{background:rgba(255,255,255,0.02)}
+.heatmap-cell.l1{background:rgba(0,232,162,0.12)}
+.heatmap-cell.l2{background:rgba(0,232,162,0.25)}
+.heatmap-cell.l3{background:rgba(0,232,162,0.4)}
+.heatmap-cell.l4{background:rgba(0,232,162,0.6)}
+.heatmap-cell.negative{background:rgba(255,107,138,0.15)!important;color:var(--coral)}
+.heatmap-cell.negative.l3{background:rgba(255,107,138,0.35)!important}
+.heatmap-cell.negative.l4{background:rgba(255,107,138,0.5)!important}
+.heatmap-weekday{
+  text-align:center;font-size:9px;font-weight:700;color:var(--text-dim);
+  letter-spacing:0.1em;padding:4px 0;
+}
+
+/* Record detail */
+.record-detail{
+  padding:16px;border-radius:12px;margin-top:16px;
+  background:rgba(0,0,0,0.2);border:1px solid var(--card-border);
+  animation:slideIn .3s ease-out;
+}
+.record-date{font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:0.08em;margin-bottom:10px}
+.record-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-mid);padding:4px 0}
+.record-row.total{border-top:1px solid var(--card-border);margin-top:6px;padding-top:10px;font-weight:700;color:var(--text-bright)}
+
+/* ─── STATS TAB ───────────────────────────────────── */
+.stats-year{text-align:center;font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:16px}
+
+.stat-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-item{font-size:12px;color:var(--text-mid)}
+.stat-item strong{color:var(--text-bright);font-weight:700}
+
+/* Waterfall chart */
+.waterfall{margin-top:16px}
+.waterfall-bar{
+  display:flex;align-items:center;gap:10px;margin-bottom:8px;
+}
+.waterfall-label{width:56px;font-size:10px;font-weight:600;color:var(--text-dim);letter-spacing:0.08em;text-align:right;flex-shrink:0}
+.waterfall-track{flex:1;height:24px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;position:relative}
+.waterfall-fill{height:100%;border-radius:8px;transition:width .8s ease;display:flex;align-items:center;padding-left:10px;font-family:var(--mono);font-size:11px;font-weight:700;min-width:fit-content}
+.waterfall-fill.pos{background:linear-gradient(90deg,rgba(0,232,162,0.2),rgba(0,232,162,0.4));color:var(--biolum)}
+.waterfall-fill.neg{background:linear-gradient(90deg,rgba(255,107,138,0.2),rgba(255,107,138,0.4));color:var(--coral);justify-content:flex-end;padding-right:10px}
+.waterfall-fill.net{background:linear-gradient(90deg,rgba(232,200,116,0.2),rgba(232,200,116,0.4));color:var(--sand)}
+
+/* Month summary */
+.month-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-top:12px}
+.month-sum-item{}
+.month-sum-label{font-size:9px;font-weight:600;letter-spacing:0.1em;margin-bottom:4px}
+.month-sum-val{font-family:var(--mono);font-size:18px;font-weight:800}
+.month-footer{font-size:10px;color:var(--text-dim);text-align:center;margin-top:10px}
+
+/* ─── FISH POND ──────────────────────────────────── */
+.fish-pond{
+  position:fixed;bottom:0;left:0;right:0;height:120px;
+  pointer-events:none;z-index:0;overflow:hidden;
+}
+.mini-fish{
+  position:absolute;font-size:16px;
+  animation:swim-across var(--duration, 12s) linear forwards;
+  opacity:0.3;
+}
+@keyframes swim-across{
+  from{transform:translateX(-20px)}
+  to{transform:translateX(calc(100vw + 40px))}
+}
+
+/* ─── SCROLLBAR ──────────────────────────────────── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(100,180,255,0.1);border-radius:2px}
+
+.hidden{display:none!important}
+
+/* ─── RESPONSIVE ─────────────────────────────────── */
+@media(max-width:420px){
+  .ring-svg{width:180px;height:180px}
+  .ring-time{font-size:34px}
+  .ring-time .sec{font-size:18px}
+  .earn-val{font-size:22px}
+  .earnings-hero{gap:28px}
+}
+</style>
+</head>
+<body>
+
+<!-- Ocean background -->
+<div class="ocean-bg"></div>
+<div class="light-rays"></div>
+<canvas id="bubbles-canvas"></canvas>
+
+<!-- Whale -->
+<div class="whale-container">
+  <div class="whale-body">
+    <div class="whale-tail"></div>
+    <div class="whale-main"></div>
+    <div class="whale-belly"></div>
+  </div>
+</div>
+
+<!-- Fish pond -->
+<div class="fish-pond" id="fish-pond"></div>
+
+<!-- App shell -->
+<div class="app-shell">
+  <!-- Header -->
+  <div class="hud-header">
+    <div class="hud-left">
+      <button class="hud-btn close" title="关闭">✕</button>
+      <button class="hud-btn min" title="最小化">−</button>
+    </div>
+    <span class="hud-brand">deep ocean</span>
+    <div style="width:76px"></div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="ocean-nav">
+    <button class="nav-btn active" data-tab="timer"><span class="nav-icon">🌊</span>计时</button>
+    <button class="nav-btn" data-tab="heatmap"><span class="nav-icon">🪸</span>热力图</button>
+    <button class="nav-btn" data-tab="stats"><span class="nav-icon">📊</span>统计</button>
+  </div>
+
+  <!-- ═══ TIMER TAB ═══ -->
+  <div class="tab-panel active" id="tab-timer">
+    <!-- Status -->
+    <div class="status-row">
+      <div class="status-pill idle" id="status-pill">
+        <span class="dot"></span>
+        <span id="status-text">待机中</span>
+      </div>
+    </div>
+
+    <!-- Ring timer -->
+    <div class="ring-container">
+      <svg class="ring-svg" viewBox="0 0 220 220">
+        <circle class="ring-track" cx="110" cy="110" r="98"/>
+        <circle class="ring-progress" id="ring-progress" cx="110" cy="110" r="98"
+          stroke-dasharray="615.75" stroke-dashoffset="615.75"/>
+      </svg>
+      <div class="ring-inner-text">
+        <div class="ring-time" id="ring-time">00:00<span class="sec">00</span></div>
+        <div class="ring-sublabel" id="ring-sublabel">今日摸鱼时长</div>
+      </div>
+    </div>
+
+    <!-- Earnings -->
+    <div class="earnings-hero">
+      <div class="earn-block">
+        <div class="earn-label">已赚取</div>
+        <div class="earn-val green" id="earn-val">+¥0.00</div>
+      </div>
+      <div class="earn-block">
+        <div class="earn-label">时薪</div>
+        <div class="earn-val amber" id="rate-val">¥0.0</div>
+      </div>
+    </div>
+
+    <!-- Achievement -->
+    <div class="achievement hidden" id="achievement">
+      <div class="achievement-icon">🐟</div>
+      <div class="achievement-text" id="achievement-text">加载中...<small>继续摸鱼解锁更多成就</small></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-area">
+      <button class="btn-fish start" id="btn-fish">🌊 开始摸鱼</button>
+      <button class="btn-icon-round" id="btn-reset" title="重置">↺</button>
+      <button class="btn-icon-round" id="btn-settings" title="设置">⚙</button>
+    </div>
+
+    <!-- Mini stats -->
+    <div class="mini-stats">
+      <div class="mini-stat">
+        <div class="mini-stat-label">摸鱼 +</div>
+        <div class="mini-stat-val pos" id="m-fish">+¥0</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-stat-label">加班 −</div>
+        <div class="mini-stat-val neg" id="m-ot">−¥0</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-stat-label">净收益</div>
+        <div class="mini-stat-val neu" id="m-net">¥0</div>
+      </div>
+    </div>
+
+    <!-- Today panel -->
+    <div class="glass" id="today-panel">
+      <div class="prog-row">
+        <span class="prog-label">工时</span>
+        <div class="prog-track"><div class="prog-fill green" id="prog-fill" style="width:0%"></div></div>
+        <span class="prog-pct" id="prog-pct">0%</span>
+      </div>
+      <div class="prog-row">
+        <span class="prog-label">7日</span>
+        <div class="mini-bars" id="mini-bars"></div>
+        <span class="mini-bar-total" id="week-total" style="color:var(--biolum)">+¥0</span>
+      </div>
+      <div class="ocean-quote" id="quote">「 摸鱼一时爽，一直摸鱼一直爽 」</div>
+    </div>
+
+    <!-- Settings -->
+    <div class="glass hidden" id="settings-panel">
+      <div class="settings-section">
+        <div class="settings-title">薪酬设置</div>
+        <div class="toggle-group">
+          <button class="toggle-item active" id="tog-monthly">月薪</button>
+          <button class="toggle-item" id="tog-yearly">年薪</button>
+        </div>
+        <div class="input-row">
+          <input class="ocean-input" type="number" id="salary-input" value="10000">
+          <span class="input-suffix">元</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-title">加班时长（亏损）</div>
+        <div class="input-row">
+          <input class="ocean-input" type="number" id="ot-input" value="0" step="0.5" min="0">
+          <span class="input-suffix">小时</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-title">工作时段 <span id="wh-label">(8.0h/天)</span></div>
+        <div class="time-row">
+          <span class="time-period">AM</span>
+          <input class="ocean-input" type="time" id="t-am-s" value="09:00">
+          <span class="time-sep">~</span>
+          <input class="ocean-input" type="time" id="t-am-e" value="12:00">
+        </div>
+        <div class="time-row">
+          <span class="time-period">PM</span>
+          <input class="ocean-input" type="time" id="t-pm-s" value="13:00">
+          <span class="time-sep">~</span>
+          <input class="ocean-input" type="time" id="t-pm-e" value="18:00">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ HEATMAP TAB ═══ -->
+  <div class="tab-panel" id="tab-heatmap">
+    <div class="glass">
+      <div class="heatmap-month">
+        <button class="heatmap-nav" id="hm-prev">◀</button>
+        <span class="heatmap-title" id="hm-title">2026年6月</span>
+        <button class="heatmap-nav" id="hm-next">▶</button>
+      </div>
+      <div class="heatmap-grid" id="hm-weekdays"></div>
+      <div class="heatmap-grid" id="hm-grid" style="margin-top:5px"></div>
+      <div class="record-detail hidden" id="rec-detail"></div>
+    </div>
+  </div>
+
+  <!-- ═══ STATS TAB ═══ -->
+  <div class="tab-panel" id="tab-stats">
+    <div class="glass">
+      <div class="stats-year" id="st-year">2026年 年度总览</div>
+      <div class="stat-grid-2">
+        <div class="stat-item">摸鱼天数: <strong id="st-days">0天</strong></div>
+        <div class="stat-item">摸鱼时长: <strong id="st-time">00:00:00</strong></div>
+        <div class="stat-item">加班时长: <strong id="st-ot">0h</strong></div>
+        <div class="stat-item">净收益: <strong id="st-net" style="color:var(--biolum)">+¥0</strong></div>
+      </div>
+    </div>
+
+    <div class="glass">
+      <div class="heatmap-month">
+        <button class="heatmap-nav" id="st-prev">◀</button>
+        <span class="heatmap-title" id="st-month">6月</span>
+        <button class="heatmap-nav" id="st-next">▶</button>
+      </div>
+
+      <!-- Waterfall -->
+      <div class="waterfall" id="waterfall"></div>
+
+      <div class="month-summary" id="month-summary"></div>
+      <div class="month-footer" id="month-footer"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const S = {
+  salaryType:'monthly', salary:10000,
+  amS:'09:00', amE:'12:00', pmS:'13:00', pmE:'18:00',
+  isFishing:false, fishStart:null,
+  calY:2026, calM:5, selDate:null,
+  records:{}
+};
+
+const WORKDAYS = 22;
+const RING_C = 2 * Math.PI * 98; // ~615.75
+const MAX_RING = 3 * 3600000; // 3h = full ring
+
+function dk(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function tm(t){const[h,m]=t.split(':').map(Number);return h*60+m}
+function wh(){return(tm(S.amE)-tm(S.amS)+tm(S.pmE)-tm(S.pmS))/60}
+function rate(){const w=wh();return w<=0?0:S.salaryType==='monthly'?S.salary/WORKDAYS/w:S.salary/12/WORKDAYS/w}
+
+function recalc(key){
+  const r=S.records[key];if(!r)return;
+  const rt=rate();
+  r.fe=(r.ft/3600000)*rt;
+  r.oe=-r.ot*rt;
+  r.ne=r.fe+r.oe;
+}
+
+function recalcAll(){Object.keys(S.records).forEach(recalc)}
+
+// Seed data
+(function seed(){
+  const t=new Date();const k=dk(t);
+  S.records[k]={ft:47*60000+23000,ot:1.5,fe:0,oe:0,ne:0};recalc(k);
+  for(let i=1;i<=20;i++){
+    const d=new Date(t);d.setDate(d.getDate()-i);
+    if(d.getDay()===0||d.getDay()===6)continue;
+    const kk=dk(d);
+    const ft=Math.random()*100*60000;
+    const ot=Math.random()>0.55?Math.random()*3:0;
+    S.records[kk]={ft,ot:Math.round(ot*2)/2,fe:0,oe:0,ne:0};recalc(kk);
+  }
+})();
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+
+function fmtTime(ms){
+  if(ms<0)ms=0;
+  const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}<span class="sec">${String(ss).padStart(2,'0')}</span>`;
+}
+function fmtPlain(ms){
+  if(ms<0)ms=0;
+  const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// BUBBLES
+// ═══════════════════════════════════════════════════════
+const bCvs=$('#bubbles-canvas'),bCtx=bCvs.getContext('2d');
+let bubbles=[];
+function initBubbles(){
+  bCvs.width=innerWidth;bCvs.height=innerHeight;
+  bubbles=[];
+  for(let i=0;i<30;i++){
+    bubbles.push({
+      x:Math.random()*bCvs.width,
+      y:bCvs.height+Math.random()*200,
+      r:Math.random()*3+1,
+      speed:Math.random()*0.5+0.2,
+      wobble:Math.random()*Math.PI*2,
+      wobbleSpeed:Math.random()*0.02+0.005
+    });
+  }
+}
+function drawBubbles(){
+  bCtx.clearRect(0,0,bCvs.width,bCvs.height);
+  bubbles.forEach(b=>{
+    b.y-=b.speed;b.wobble+=b.wobbleSpeed;
+    const wx=Math.sin(b.wobble)*15;
+    if(b.y<-10){b.y=bCvs.height+10;b.x=Math.random()*bCvs.width}
+    bCtx.beginPath();
+    bCtx.arc(b.x+wx,b.y,b.r,0,Math.PI*2);
+    bCtx.fillStyle='rgba(140,210,255,0.06)';
+    bCtx.fill();
+    // Highlight
+    bCtx.beginPath();
+    bCtx.arc(b.x+wx-b.r*0.3,b.y-b.r*0.3,b.r*0.3,0,Math.PI*2);
+    bCtx.fillStyle='rgba(200,230,255,0.08)';
+    bCtx.fill();
+  });
+  requestAnimationFrame(drawBubbles);
+}
+initBubbles();drawBubbles();
+addEventListener('resize',initBubbles);
+
+// ═══════════════════════════════════════════════════════
+// FISH POND
+// ═══════════════════════════════════════════════════════
+const fishEmojis=['🐟','🐠','🐡','🦈','🐬','🐳'];
+function spawnFish(){
+  const el=document.createElement('div');
+  el.className='mini-fish';
+  el.textContent=fishEmojis[Math.floor(Math.random()*fishEmojis.length)];
+  el.style.bottom=Math.random()*80+20+'px';
+  el.style.setProperty('--duration',(8+Math.random()*10)+'s');
+  el.style.fontSize=(14+Math.random()*10)+'px';
+  el.style.opacity=0.15+Math.random()*0.15;
+  $('#fish-pond').appendChild(el);
+  el.addEventListener('animationend',()=>el.remove());
+}
+// Spawn fish periodically when fishing
+setInterval(()=>{if(S.isFishing)spawnFish()},3000);
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+$$('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    $$('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    $$('.tab-panel').forEach(p=>p.classList.remove('active'));
+    $(`#tab-${btn.dataset.tab}`).classList.add('active');
+    if(btn.dataset.tab==='heatmap')renderHeatmap();
+    if(btn.dataset.tab==='stats')renderStats();
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════════════════
+function getFishTime(){
+  const r=S.records[dk(new Date())];
+  const base=r?r.ft:0;
+  return S.isFishing&&S.fishStart?base+(Date.now()-S.fishStart):base;
+}
+
+function update(){
+  const ft=getFishTime(),rt=rate();
+  const fe=(ft/3600000)*rt;
+  const oe=-S.records[dk(new Date())]?.ot||0 * rt;
+  const ot=S.records[dk(new Date())]?.ot||0;
+  const ote=-ot*rt;
+  const net=fe+ote;
+
+  // Ring
+  const pct=Math.min(1,ft/MAX_RING);
+  $('#ring-progress').setAttribute('stroke-dashoffset',RING_C*(1-pct));
+  $('#ring-time').innerHTML=fmtTime(ft);
+
+  // Earnings
+  $('#earn-val').textContent=`+¥${fe.toFixed(2)}`;
+  $('#rate-val').textContent=`¥${rt.toFixed(1)}`;
+
+  // Mini stats
+  $('#m-fish').textContent=`+¥${fe.toFixed(0)}`;
+  $('#m-ot').textContent=`−¥${Math.abs(ote).toFixed(0)}`;
+  const netEl=$('#m-net');
+  netEl.textContent=`${net>=0?'+':''}¥${net.toFixed(0)}`;
+  netEl.className=`mini-stat-val ${net>=0?'pos':'neg'}`;
+
+  // Status
+  const badge=$('#status-pill');
+  const now=new Date(),cm=now.getHours()*60+now.getMinutes();
+  const isWork=(cm>=tm(S.amS)&&cm<tm(S.amE))||(cm>=tm(S.pmS)&&cm<tm(S.pmE));
+  badge.className='status-pill '+(S.isFishing?'fishing':isWork?'working':'idle');
+  $('#status-text').textContent=S.isFishing?'摸鱼中':isWork?'工作中':'待机中';
+
+  // Achievement
+  updateAchievement(ft,fe);
+
+  // Progress
+  updateProgress();
+}
+
+// ═══════════════════════════════════════════════════════
+// ACHIEVEMENTS
+// ═══════════════════════════════════════════════════════
+const achievements=[
+  {ft:60000,icon:'🐟',title:'初入鱼塘',desc:'连续摸鱼 1 分钟'},
+  {ft:300000,icon:'🐠',title:'小有收获',desc:'连续摸鱼 5 分钟'},
+  {ft:1800000,icon:'🐡',title:'摸鱼达人',desc:'累计摸鱼 30 分钟'},
+  {ft:3600000,icon:'🐳',title:'深海巨鲸',desc:'累计摸鱼 1 小时'},
+  {fe:10,icon:'🍱',title:'赚回午饭',desc:'摸鱼收益超过 ¥10'},
+  {fe:50,icon:'🧋',icon:'🎉',title:'奶茶自由',desc:'摸鱼收益超过 ¥50'},
+  {fe:100,icon:'🍕',title:'大餐在望',desc:'摸鱼收益超过 ¥100'},
+];
+
+function updateAchievement(ft,fe){
+  const el=$('#achievement');
+  const earned=achievements.filter(a=>(ft>=a.ft)||(a.fe&&fe>=a.fe));
+  if(earned.length===0){el.classList.add('hidden');return}
+  const latest=earned[earned.length-1];
+  el.classList.remove('hidden');
+  el.querySelector('.achievement-icon').textContent=latest.icon;
+  el.querySelector('.achievement-text').innerHTML=`${latest.title}<small>${latest.desc}</small>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// PROGRESS + BARS
+// ═══════════════════════════════════════════════════════
+function updateProgress(){
+  const now=new Date(),cm=now.getHours()*60+now.getMinutes();
+  const total=wh()*60;if(total<=0)return;
+  let e=0;
+  if(cm>=tm(S.amS))e+=Math.min(cm,tm(S.amE))-tm(S.amS);
+  if(cm>=tm(S.pmS))e+=Math.min(cm,tm(S.pmE))-tm(S.pmS);
+  const pct=Math.min(100,Math.max(0,(e/total)*100));
+  $('#prog-fill').style.width=`${pct}%`;
+  $('#prog-pct').textContent=`${Math.round(pct)}%`;
+}
+
+function renderBars(){
+  const c=$('#mini-bars'),days=[],t=new Date();
+  for(let i=6;i>=0;i--){const d=new Date(t);d.setDate(d.getDate()-i);const k=dk(d);const r=S.records[k];days.push({v:r?r.ne:0,today:i===0})}
+  const mx=Math.max(1,...days.map(d=>Math.abs(d.v)));
+  let wn=0;
+  c.innerHTML=days.map(d=>{
+    wn+=d.v;
+    const h=d.v===0?8:Math.max(12,(Math.abs(d.v)/mx)*90);
+    return `<div class="mini-bar-col" title="¥${d.v.toFixed(1)}">${d.today?'<span class="mini-bar-marker">▼</span>':''}<div class="mini-bar ${d.v>=0?'pos':'neg'} ${d.today?'today':''}" style="height:${h}%"></div></div>`;
+  }).join('');
+  const wt=$('#week-total');
+  wt.textContent=`${wn>=0?'+':''}¥${wn.toFixed(0)}`;
+  wt.style.color=wn>=0?'var(--biolum)':'var(--coral)';
+}
+
+// ═══════════════════════════════════════════════════════
+// BUTTONS
+// ═══════════════════════════════════════════════════════
+$('#btn-fish').addEventListener('click',()=>{
+  if(S.isFishing){
+    const elapsed=Date.now()-S.fishStart;
+    const k=dk(new Date());
+    if(!S.records[k])S.records[k]={ft:0,ot:0,fe:0,oe:0,ne:0};
+    S.records[k].ft+=elapsed;recalc(k);
+    S.isFishing=false;S.fishStart=null;
+    $('#btn-fish').className='btn-fish start';$('#btn-fish').innerHTML='🌊 开始摸鱼';
+  }else{
+    S.isFishing=true;S.fishStart=Date.now();spawnFish();
+    $('#btn-fish').className='btn-fish stop';$('#btn-fish').innerHTML='🌊 停止摸鱼';
+  }
+  update();renderBars();
+});
+
+$('#btn-reset').addEventListener('click',()=>{
+  S.isFishing=false;S.fishStart=null;
+  S.records[dk(new Date())]={ft:0,ot:0,fe:0,oe:0,ne:0};
+  $('#btn-fish').className='btn-fish start';$('#btn-fish').innerHTML='🌊 开始摸鱼';
+  update();renderBars();
+});
+
+$('#btn-settings').addEventListener('click',()=>{
+  const sp=$('#settings-panel'),tp=$('#today-panel');
+  if(sp.classList.contains('hidden')){sp.classList.remove('hidden');tp.classList.add('hidden')}
+  else{sp.classList.add('hidden');tp.classList.remove('hidden')}
+});
+
+// Salary
+$('#tog-monthly').addEventListener('click',()=>{S.salaryType='monthly';$('#tog-monthly').classList.add('active');$('#tog-yearly').classList.remove('active');recalcAll();update();renderBars()});
+$('#tog-yearly').addEventListener('click',()=>{S.salaryType='yearly';$('#tog-yearly').classList.add('active');$('#tog-monthly').classList.remove('active');recalcAll();update();renderBars()});
+$('#salary-input').addEventListener('change',e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>0){S.salary=v;recalcAll();update();renderBars()}});
+$('#ot-input').addEventListener('change',e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>=0){const k=dk(new Date());if(!S.records[k])S.records[k]={ft:0,ot:0,fe:0,oe:0,ne:0};S.records[k].ot=v;recalc(k);update();renderBars()}});
+
+['t-am-s','t-am-e','t-pm-s','t-pm-e'].forEach(id=>{
+  $(`#${id}`).addEventListener('change',e=>{
+    if(id==='t-am-s')S.amS=e.target.value;if(id==='t-am-e')S.amE=e.target.value;
+    if(id==='t-pm-s')S.pmS=e.target.value;if(id==='t-pm-e')S.pmE=e.target.value;
+    $('#wh-label').textContent=`(${wh().toFixed(1)}h/天)`;recalcAll();update();renderBars();
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+// QUOTE
+// ═══════════════════════════════════════════════════════
+const quotes=['摸鱼一时爽，一直摸鱼一直爽','努力不一定成功，但不努力真的好舒服','今天的摸鱼，明天的回忆','只要我不努力，老板就赚不到我的剩余价值','打工是为了更好地摸鱼','我上班就是为了下班','摸鱼是对生活最起码的尊重','上班如戏，全靠演技','今天的班，明天的退休','摸鱼赚钱两不误，人生赢家就是我'];
+(function(){const n=new Date(),s=new Date(n.getFullYear(),0,0),d=Math.floor((n-s)/864e5);$('#quote').textContent=`「 ${quotes[d%quotes.length]} 」`})();
+
+// ═══════════════════════════════════════════════════════
+// HEATMAP
+// ═══════════════════════════════════════════════════════
+function renderHeatmap(){
+  const y=S.calY,m=S.calM;
+  $('#hm-title').textContent=`${y}年${m+1}月`;
+
+  // Weekday headers
+  const wd=['日','一','二','三','四','五','六'];
+  $('#hm-weekdays').innerHTML=wd.map(d=>`<div class="heatmap-weekday">${d}</div>`).join('');
+
+  const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate(),tk=dk(new Date());
+  let html='';
+  for(let i=0;i<fd;i++)html+=`<div class="heatmap-cell" style="visibility:hidden"></div>`;
+  for(let d=1;d<=dim;d++){
+    const k=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const r=S.records[k];
+    const isToday=k===tk,isSel=k===S.selDate;
+    let cls='heatmap-cell';
+    if(isToday)cls+=' today';if(isSel)cls+=' selected';
+    if(r){
+      const abs=Math.abs(r.fe);
+      if(abs<=0)cls+=' l0';
+      else if(abs<5)cls+=' l1';
+      else if(abs<20)cls+=' l2';
+      else if(abs<50)cls+=' l3';
+      else cls+=' l4';
+      if(r.ne<0)cls+=' negative';
+    }else cls+=' l0';
+    html+=`<button class="${cls}" data-d="${k}">${d}</button>`;
+  }
+  $('#hm-grid').innerHTML=html;
+
+  $$('#hm-grid .heatmap-cell[data-d]').forEach(c=>{
+    c.addEventListener('click',()=>{
+      S.selDate=S.selDate===c.dataset.d?null:c.dataset.d;
+      renderHeatmap();
+    });
+  });
+
+  // Detail
+  const sel=S.selDate?S.records[S.selDate]:null;
+  const det=$('#rec-detail');
+  if(sel){
+    det.classList.remove('hidden');
+    det.innerHTML=`
+      <div class="record-date">${S.selDate} 记录</div>
+      <div class="record-row"><span>摸鱼: ${fmtPlain(sel.ft)}</span><span style="color:var(--biolum)">+¥${sel.fe.toFixed(1)}</span></div>
+      <div class="record-row"><span>加班: ${sel.ot}h</span><span style="color:var(--coral)">¥${sel.oe.toFixed(1)}</span></div>
+      <div class="record-row total"><span>净利:</span><span style="color:${sel.ne>=0?'var(--biolum)':'var(--coral)'}">${sel.ne>=0?'+':''}¥${sel.ne.toFixed(1)}</span></div>`;
+  }else det.classList.add('hidden');
+}
+
+$('#hm-prev').addEventListener('click',()=>{S.calM--;if(S.calM<0){S.calM=11;S.calY--}S.selDate=null;renderHeatmap()});
+$('#hm-next').addEventListener('click',()=>{S.calM++;if(S.calM>11){S.calM=0;S.calY++}S.selDate=null;renderHeatmap()});
+
+// ═══════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════
+function renderStats(){
+  const y=S.calY,m=S.calM;
+
+  // Year
+  const yr=Object.values(S.records).filter(r=>r.date&&r.date.startsWith(`${y}-`));
+  // Fix: records don't have .date, they have the key
+  const yrRecs=Object.entries(S.records).filter(([k])=>k.startsWith(`${y}-`)).map(([,v])=>v);
+  let yF=0,yO=0,yFE=0,yOE=0;
+  yrRecs.forEach(r=>{yF+=r.ft;yO+=r.ot;yFE+=r.fe;yOE+=r.oe});
+  const yN=yFE+yOE;
+
+  $('#st-year').textContent=`${y}年 年度总览`;
+  $('#st-days').textContent=`${yrRecs.length}天`;
+  $('#st-time').textContent=fmtPlain(yF);
+  $('#st-ot').textContent=`${yO}h`;
+  const ynEl=$('#st-net');ynEl.textContent=`${yN>=0?'+':''}¥${yN.toFixed(0)}`;ynEl.style.color=yN>=0?'var(--biolum)':'var(--coral)';
+
+  // Month
+  const pre=`${y}-${String(m+1).padStart(2,'0')}`;
+  const mRecs=Object.entries(S.records).filter(([k])=>k.startsWith(pre)).map(([,v])=>v);
+  let mF=0,mO=0,mFE=0,mOE=0;
+  mRecs.forEach(r=>{mF+=r.ft;mO+=r.ot;mFE+=r.fe;mOE+=r.oe});
+  const mN=mFE+mOE;
+
+  $('#st-month').textContent=`${m+1}月`;
+
+  // Waterfall
+  const wf=$('#waterfall');
+  const maxVal=Math.max(Math.abs(mFE),Math.abs(mOE),Math.abs(mN),1);
+  wf.innerHTML=`
+    <div class="waterfall-bar"><span class="waterfall-label">摸鱼+</span><div class="waterfall-track"><div class="waterfall-fill pos" style="width:${(Math.abs(mFE)/maxVal*100).toFixed(1)}%">+¥${mFE.toFixed(0)}</div></div></div>
+    <div class="waterfall-bar"><span class="waterfall-label">加班−</span><div class="waterfall-track"><div class="waterfall-fill neg" style="width:${(Math.abs(mOE)/maxVal*100).toFixed(1)}%">−¥${Math.abs(mOE).toFixed(0)}</div></div></div>
+    <div class="waterfall-bar"><span class="waterfall-label">净利</span><div class="waterfall-track"><div class="waterfall-fill net" style="width:${(Math.abs(mN)/maxVal*100).toFixed(1)}%">${mN>=0?'+':''}¥${mN.toFixed(0)}</div></div></div>`;
+
+  // Month summary
+  $('#month-summary').innerHTML=`
+    <div class="month-sum-item"><div class="month-sum-label" style="color:var(--biolum-dim)">摸鱼收入</div><div class="month-sum-val" style="color:var(--biolum)">+¥${mFE.toFixed(0)}</div></div>
+    <div class="month-sum-item"><div class="month-sum-label" style="color:var(--coral-dim)">加班亏损</div><div class="month-sum-val" style="color:var(--coral)">−¥${Math.abs(mOE).toFixed(0)}</div></div>
+    <div class="month-sum-item"><div class="month-sum-label" style="color:var(--sand-dim)">净收益</div><div class="month-sum-val" style="color:${mN>=0?'var(--biolum)':'var(--coral)'}">${mN>=0?'+':''}¥${mN.toFixed(0)}</div></div>`;
+
+  $('#month-footer').textContent=`本月摸鱼 ${fmtPlain(mF)} / 加班 ${mO}h / ${mRecs.length}天有记录`;
+}
+
+$('#st-prev').addEventListener('click',()=>{S.calM--;if(S.calM<0){S.calM=11;S.calY--}renderStats()});
+$('#st-next').addEventListener('click',()=>{S.calM++;if(S.calM>11){S.calM=0;S.calY++}renderStats()});
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+(function init(){
+  const t=new Date();S.calY=t.getFullYear();S.calM=t.getMonth();
+  update();renderBars();
+  setInterval(()=>{update();renderBars()},200);
+})();
+</script>
+</body>
+</html>
