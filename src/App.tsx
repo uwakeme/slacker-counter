@@ -184,6 +184,22 @@ export default function App() {
     return { totalFish, totalOvertime, totalFishEarn, totalOverEarn, totalNet, days: monthRecords.length };
   }, [monthRecords]);
 
+  // 热力图色阶基准 — 当月 |净收益| 最大值;无记录时 fallback 0.5,避免除零
+  const monthHeatMax = useMemo(() => {
+    if (monthRecords.length === 0) return 0.5;
+    return Math.max(0.5, ...monthRecords.map((r) => Math.abs(r.netEarnings)));
+  }, [monthRecords]);
+
+  // 热力色:绿赚红亏,深浅 = |value|/monthHeatMax,幂函数让小数值也看得出梯度
+  const heatColor = (value: number): string | null => {
+    if (value === 0) return null;
+    const ratio = Math.min(1, Math.abs(value) / monthHeatMax);
+    const alpha = 0.22 + Math.pow(ratio, 0.55) * 0.6;
+    return value > 0
+      ? `rgba(64, 168, 72, ${alpha.toFixed(2)})`
+      : `rgba(208, 72, 72, ${alpha.toFixed(2)})`;
+  };
+
   const yearRecords = useMemo(() => {
     return getYearRecords(viewYear);
   }, [viewYear, records]);
@@ -608,6 +624,13 @@ export default function App() {
                       const record = hasRecord ? records[item.date!] : null;
                       const isToday = item.date === new Date().toISOString().split('T')[0];
                       const isSelected = item.date === selectedDate;
+                      const heat = record ? heatColor(record.netEarnings) : null;
+                      // 选中/今日 圈边:无热力色时仍可覆盖;有热力色时用 inset ring 圈出,避免盖掉色块
+                      const ring = isSelected
+                        ? 'inset 0 0 0 2px rgba(0,0,0,0.55)'
+                        : isToday
+                        ? 'inset 0 0 0 2px rgba(232,144,64,0.9)'
+                        : 'none';
                       return (
                         <button
                           key={i}
@@ -615,11 +638,12 @@ export default function App() {
                           disabled={!item.day}
                           className="aspect-square flex flex-col items-center justify-center rounded text-[13px] font-bold relative transition-all"
                           style={{
-                            background: isSelected
-                              ? 'rgba(0,0,0,0.3)'
-                              : isToday
-                              ? 'rgba(232,144,64,0.3)'
-                              : 'rgba(0,0,0,0.08)',
+                            background: heat
+                              ?? (isSelected
+                                ? 'rgba(0,0,0,0.3)'
+                                : isToday
+                                ? 'rgba(232,144,64,0.3)'
+                                : 'rgba(0,0,0,0.08)'),
                             color: record
                               ? record.netEarnings >= 0
                                 ? '#0d3f04'
@@ -627,21 +651,34 @@ export default function App() {
                               : isToday
                               ? '#8a5020'
                               : '#3a4a2a',
+                            boxShadow: ring,
                             opacity: item.day ? 1 : 0,
                           }}
+                          title={record ? `${record.date} · ${record.netEarnings >= 0 ? '+' : ''}¥${record.netEarnings.toFixed(1)}` : undefined}
                         >
                           {item.day}
-                          {record && record.netEarnings !== 0 && (
-                            <div
-                              className="w-2 h-2 rounded-full absolute bottom-0.5"
-                              style={{
-                                background: record.netEarnings >= 0 ? '#208020' : '#802020',
-                              }}
-                            />
-                          )}
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* 热力图图例 */}
+                  <div
+                    className="mt-1.5 mb-1 flex items-center gap-1 text-[10px] tabular-nums"
+                    style={{ color: '#2a3f1a', fontFamily: 'monospace' }}
+                  >
+                    <span className="shrink-0">亏</span>
+                    <div
+                      className="flex-1 h-2 rounded-sm"
+                      style={{ background: 'linear-gradient(90deg, rgba(208,72,72,0.18) 0%, rgba(208,72,72,0.85) 100%)' }}
+                    />
+                    <span className="shrink-0 mx-0.5">少</span>
+                    <span className="shrink-0">多</span>
+                    <div
+                      className="flex-1 h-2 rounded-sm"
+                      style={{ background: 'linear-gradient(90deg, rgba(64,168,72,0.18) 0%, rgba(64,168,72,0.85) 100%)' }}
+                    />
+                    <span className="shrink-0">赚</span>
                   </div>
 
                   {selectedDate && (
